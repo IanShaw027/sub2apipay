@@ -120,7 +120,16 @@ function AdminContent() {
 
   return (
     <div className="mx-auto min-h-screen max-w-6xl p-4">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Sub2ApiPay 订单管理</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Sub2ApiPay 订单管理</h1>
+        <button
+          type="button"
+          onClick={fetchOrders}
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+        >
+          刷新
+        </button>
+      </div>
 
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">

@@ -533,7 +533,19 @@ function PayContent() {
                 </div>
                 <div className="space-y-4">
                   <div className={['rounded-2xl border p-4', isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-slate-50'].join(' ')}>
-                    <div className={['text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>订单中心</div>
+                    <div className="flex items-center justify-between">
+                      <div className={['text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>订单中心</div>
+                      <button
+                        type="button"
+                        onClick={loadUserAndOrders}
+                        className={[
+                          'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
+                          isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+                        ].join(' ')}
+                      >
+                        刷新
+                      </button>
+                    </div>
                     <div className="mt-1 text-lg font-semibold">最近订单：{myOrders.length} 条</div>
                     <a
                       href={pcOrdersUrl}
