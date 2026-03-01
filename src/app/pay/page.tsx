@@ -417,8 +417,8 @@ function PayContent() {
           isEmbedded ? '' : 'mt-6',
         ].join(' ')}
       >
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <div className="text-left">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
             <div
               className={[
                 'mb-2 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium',
@@ -440,7 +440,7 @@ function PayContent() {
             </p>
           </div>
           {!isMobile && (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={loadUserAndOrders}
