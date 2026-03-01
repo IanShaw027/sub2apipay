@@ -87,6 +87,7 @@ function PayContent() {
   const loadUserAndOrders = async () => {
     if (!userId || Number.isNaN(userId) || userId <= 0) return;
 
+    setUserNotFound(false);
     try {
       // 始终获取服务端配置（不含隐私信息）
       const cfgRes = await fetch(`/api/user?user_id=${userId}`);
