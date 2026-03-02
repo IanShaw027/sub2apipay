@@ -4,16 +4,27 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
-  // IFRAME_ALLOW_ORIGINS: 允许嵌入 iframe 的外部域名（逗号分隔）
-  const allowOrigins = process.env.IFRAME_ALLOW_ORIGINS || '';
+  // 自动从 SUB2API_BASE_URL 提取 origin，允许 Sub2API 主站 iframe 嵌入
+  const sub2apiUrl = process.env.SUB2API_BASE_URL || '';
+  const extraOrigins = process.env.IFRAME_ALLOW_ORIGINS || '';
 
-  const origins = allowOrigins
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const origins = new Set<string>();
 
-  if (origins.length > 0) {
-    response.headers.set('Content-Security-Policy', `frame-ancestors 'self' ${origins.join(' ')}`);
+  if (sub2apiUrl) {
+    try {
+      origins.add(new URL(sub2apiUrl).origin);
+    } catch {
+      // ignore invalid URL
+    }
+  }
+
+  for (const s of extraOrigins.split(',')) {
+    const trimmed = s.trim();
+    if (trimmed) origins.add(trimmed);
+  }
+
+  if (origins.size > 0) {
+    response.headers.set('Content-Security-Policy', `frame-ancestors 'self' ${[...origins].join(' ')}`);
   }
 
   return response;
