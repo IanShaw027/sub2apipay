@@ -264,11 +264,13 @@ docker compose exec app npx prisma migrate deploy
 
 ## Sub2API Integration
 
-Configure the recharge URL in the Sub2API admin panel:
+The following page URLs can be configured in the Sub2API admin panel:
 
-```
-https://pay.example.com/pay
-```
+| Page | URL | Description |
+|------|-----|-------------|
+| Payment | `https://pay.example.com/pay` | User recharge entry |
+| My Orders | `https://pay.example.com/pay/orders` | User views their own recharge history |
+| Order Management | `https://pay.example.com/admin` | Sub2API admin only |
 
 Sub2API **v0.1.88** and above will automatically append the following parameters — no manual query string needed:
 

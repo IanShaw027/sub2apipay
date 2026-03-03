@@ -264,11 +264,13 @@ docker compose exec app npx prisma migrate deploy
 
 ## 集成到 Sub2API
 
-在 Sub2API 管理后台将充值链接配置为：
+在 Sub2API 管理后台可配置以下页面链接：
 
-```
-https://pay.example.com/pay
-```
+| 页面 | 链接 | 说明 |
+|------|------|------|
+| 充值页面 | `https://pay.example.com/pay` | 用户充值入口 |
+| 我的订单 | `https://pay.example.com/pay/orders` | 用户查看自己的充值记录 |
+| 订单管理 | `https://pay.example.com/admin` | 仅 Sub2API 管理员可访问 |
 
 Sub2API **v0.1.88** 及以上版本会自动拼接以下参数，无需手动添加：
 
