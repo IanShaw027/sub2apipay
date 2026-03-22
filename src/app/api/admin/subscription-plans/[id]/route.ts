@@ -24,19 +24,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: '必须关联一个 Sub2API 分组' }, { status: 400 });
     }
 
-    // 如果更新了 group_id，检查唯一性
-    if (body.group_id !== undefined && Number(body.group_id) !== existing.groupId) {
-      const conflict = await prisma.subscriptionPlan.findUnique({
-        where: { groupId: Number(body.group_id) },
-      });
-      if (conflict) {
-        return NextResponse.json(
-          { error: `分组 ID ${body.group_id} 已被套餐「${conflict.name}」使用` },
-          { status: 409 },
-        );
-      }
-    }
-
     // 校验分组在 Sub2API 中仍然存在
     const group = await getGroup(finalGroupId);
     if (!group) {

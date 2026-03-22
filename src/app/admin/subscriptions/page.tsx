@@ -617,12 +617,8 @@ function SubscriptionsContent() {
       : 'border-slate-300 text-slate-700 hover:bg-slate-100',
   ].join(' ');
 
-  /* available groups for the form: only subscription type, exclude already used */
-  const subscriptionGroups = groups.filter((g) => g.subscription_type === 'subscription');
-  const usedGroupIds = new Set(
-    plans.filter((p) => p.id !== editingPlan?.id && p.groupId != null).map((p) => p.groupId!),
-  );
-  const availableGroups = subscriptionGroups.filter((g) => !usedGroupIds.has(String(g.id)));
+  /* available groups for the form: only subscription type */
+  const availableGroups = groups.filter((g) => g.subscription_type === 'subscription');
 
   /* group id → name map (all groups, for subscription display) */
   const groupNameMap = new Map(groups.map((g) => [String(g.id), g.name]));

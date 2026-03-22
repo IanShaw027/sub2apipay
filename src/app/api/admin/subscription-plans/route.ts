@@ -120,15 +120,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'sort_order 必须是非负整数' }, { status: 400 });
     }
 
-    // 验证 group_id 唯一性
-    const existing = await prisma.subscriptionPlan.findUnique({
-      where: { groupId: Number(group_id) },
-    });
-
-    if (existing) {
-      return NextResponse.json({ error: `分组 ID ${group_id} 已被套餐「${existing.name}」使用` }, { status: 409 });
-    }
-
     const plan = await prisma.subscriptionPlan.create({
       data: {
         groupId: Number(group_id),
