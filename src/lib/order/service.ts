@@ -692,11 +692,13 @@ export async function executeSubscriptionFulfillment(orderId: string): Promise<v
     const activeSub = userSubs.find((s) => s.group_id === order.subscriptionGroupId && s.status === 'active');
 
     if (activeSub) {
-      // 续费：从到期日往后推算天数
-      const plan = await prisma.subscriptionPlan.findFirst({
-        where: { groupId: order.subscriptionGroupId },
-        select: { validityDays: true, validityUnit: true },
-      });
+      // 续费：从到期日往后推算天数（使用订单关联的具体套餐，而非分组下任意套餐）
+      const plan = order.planId
+        ? await prisma.subscriptionPlan.findUnique({
+            where: { id: order.planId },
+            select: { validityDays: true, validityUnit: true },
+          })
+        : null;
       if (plan) {
         validityDays = computeValidityDays(
           plan.validityDays,
