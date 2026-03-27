@@ -8,7 +8,6 @@ vi.mock('@/lib/config', () => ({
     ALIPAY_NOTIFY_URL: 'https://pay.example.com/api/alipay/notify',
     ALIPAY_RETURN_URL: 'https://pay.example.com/pay/result',
     NEXT_PUBLIC_APP_URL: 'https://pay.example.com',
-    PRODUCT_NAME: 'Sub2API Balance Recharge',
   }),
 }));
 

@@ -285,7 +285,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       if (prefix || suffix) {
         paymentSubject = `${prefix || ''} ${payAmountStr} ${suffix || ''}`.trim();
       } else {
-        paymentSubject = `${env.PRODUCT_NAME} ${payAmountStr} CNY`;
+        paymentSubject = `Sub2API ${payAmountStr} CNY`;
       }
     }
 

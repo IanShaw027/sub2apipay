@@ -16,7 +16,6 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/config', () => ({
   getEnv: () => ({
     NEXT_PUBLIC_APP_URL: 'https://pay.example.com',
-    PRODUCT_NAME: 'Sub2API Balance Recharge',
     ALIPAY_NOTIFY_URL: 'https://pay.example.com/api/alipay/notify',
     ALIPAY_RETURN_URL: 'https://pay.example.com/pay/result',
     ADMIN_TOKEN: 'test-admin-token',
@@ -25,6 +24,10 @@ vi.mock('@/lib/config', () => ({
 
 vi.mock('@/lib/alipay/provider', () => ({
   buildAlipayPaymentUrl: (...args: unknown[]) => mockBuildAlipayPaymentUrl(...args),
+}));
+
+vi.mock('@/lib/system-config', () => ({
+  getSystemConfigs: vi.fn().mockResolvedValue({}),
 }));
 
 import { GET } from '@/app/pay/[orderId]/route';
@@ -46,6 +49,9 @@ function createPendingOrder(overrides: Record<string, unknown> = {}) {
     expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     paidAt: null,
     completedAt: null,
+    orderType: 'balance',
+    plan: null,
+    subscriptionGroupId: null,
     ...overrides,
   };
 }
@@ -178,7 +184,7 @@ describe('GET /pay/[orderId]', () => {
     expect(mockBuildAlipayPaymentUrl).toHaveBeenCalledWith({
       orderId: 'order-001',
       amount: 100.5,
-      subject: 'Sub2API Balance Recharge 100.50 CNY',
+      subject: 'Sub2API 100.50 CNY',
       notifyUrl: 'https://pay.example.com/api/alipay/notify',
       returnUrl: expectedReturnUrl,
       isMobile: false,
@@ -211,7 +217,7 @@ describe('GET /pay/[orderId]', () => {
     expect(mockBuildAlipayPaymentUrl).toHaveBeenCalledWith({
       orderId: 'order-001',
       amount: 88,
-      subject: 'Sub2API Balance Recharge 88.00 CNY',
+      subject: 'Sub2API 88.00 CNY',
       notifyUrl: 'https://pay.example.com/api/alipay/notify',
       returnUrl: expectedReturnUrl,
       isMobile: true,
@@ -241,7 +247,7 @@ describe('GET /pay/[orderId]', () => {
     expect(mockBuildAlipayPaymentUrl).toHaveBeenCalledWith({
       orderId: 'order-001',
       amount: 66,
-      subject: 'Sub2API Balance Recharge 66.00 CNY',
+      subject: 'Sub2API 66.00 CNY',
       notifyUrl: 'https://pay.example.com/api/alipay/notify',
       returnUrl: null,
       isMobile: true,

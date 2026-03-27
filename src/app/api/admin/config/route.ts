@@ -41,7 +41,6 @@ export async function PUT(request: NextRequest) {
     }
 
     const ALLOWED_CONFIG_KEYS = new Set([
-      'PRODUCT_NAME',
       'ENABLED_PAYMENT_TYPES',
       'RECHARGE_MIN_AMOUNT',
       'RECHARGE_MAX_AMOUNT',

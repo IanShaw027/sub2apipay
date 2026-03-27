@@ -5,6 +5,7 @@ import { getEnv } from '@/lib/config';
 import { buildAlipayPaymentUrl } from '@/lib/alipay/provider';
 import { deriveOrderState, getOrderDisplayState, type OrderStatusLike } from '@/lib/order/status';
 import { buildOrderResultUrl } from '@/lib/order/status-access';
+import { getSystemConfigs } from '@/lib/system-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -259,6 +260,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       expiresAt: true,
       paidAt: true,
       completedAt: true,
+      orderType: true,
+      plan: { select: { productName: true, name: true } },
+      subscriptionGroupId: true,
     },
   });
 
@@ -288,11 +292,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return renderErrorPage('订单金额异常', '订单金额无效，请返回原页面重新发起支付', order.id, 500);
   }
 
+  // 构建支付商品名称（与 order/service.ts 逻辑保持一致）
+  let subject: string;
+  if (order.orderType === 'subscription' && order.plan) {
+    subject = order.plan.productName || `Sub2API 订阅 ${order.plan.name}`;
+  } else {
+    const nameConfigs = await getSystemConfigs(['PRODUCT_NAME_PREFIX', 'PRODUCT_NAME_SUFFIX']);
+    const prefix = nameConfigs['PRODUCT_NAME_PREFIX']?.trim();
+    const suffix = nameConfigs['PRODUCT_NAME_SUFFIX']?.trim();
+    if (prefix || suffix) {
+      subject = `${prefix || ''} ${payAmount.toFixed(2)} ${suffix || ''}`.trim();
+    } else {
+      subject = `Sub2API ${payAmount.toFixed(2)} CNY`;
+    }
+  }
+
   const env = getEnv();
   const payUrl = buildAlipayPaymentUrl({
     orderId: order.id,
     amount: payAmount,
-    subject: `${env.PRODUCT_NAME} ${payAmount.toFixed(2)} CNY`,
+    subject,
     notifyUrl: env.ALIPAY_NOTIFY_URL,
     returnUrl: isAlipayAppRequest(request) ? null : buildResultUrl(order.id),
     isMobile: isMobileRequest(request),
