@@ -81,6 +81,7 @@ function PayContent() {
   const [userSubscriptions, setUserSubscriptions] = useState<UserSub[]>([]);
   const [showTopUpForm, setShowTopUpForm] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanInfo | null>(null);
+  const [renewGroupId, setRenewGroupId] = useState<number | null>(null);
   const [channelsLoaded, setChannelsLoaded] = useState(false);
   const [userLoaded, setUserLoaded] = useState(false);
 
@@ -289,6 +290,7 @@ function PayContent() {
       setError('');
       setSubscriptionError('');
       setSelectedPlan(null);
+      setRenewGroupId(null);
     }, 2200);
     return () => clearTimeout(timer);
   }, [step, finalOrderState, loadUserAndOrders, loadChannelsAndPlans]);
@@ -486,6 +488,7 @@ function PayContent() {
     setError('');
     setSubscriptionError('');
     setSelectedPlan(null);
+    setRenewGroupId(null);
     setShowTopUpForm(false);
   };
 
@@ -797,8 +800,26 @@ function PayContent() {
 
                 {effectiveTab === 'subscribe' && (
                   <div className="mt-6">
+                    {renewGroupId !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setRenewGroupId(null)}
+                        className={[
+                          'mb-4 flex items-center gap-1 text-sm transition-colors',
+                          isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700',
+                        ].join(' ')}
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        {pickLocaleText(locale, '查看全部套餐', 'View All Plans')}
+                      </button>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {plans.map((plan) => (
+                      {(renewGroupId !== null
+                        ? plans.filter((p) => p.groupId === renewGroupId)
+                        : plans
+                      ).map((plan) => (
                         <SubscriptionPlanCard
                           key={plan.id}
                           plan={plan}
@@ -824,9 +845,12 @@ function PayContent() {
                     <UserSubscriptions
                       subscriptions={userSubscriptions}
                       onRenew={(groupId) => {
-                        const plan = plans.find((p) => p.groupId === groupId);
-                        if (plan) {
-                          setSelectedPlan(plan);
+                        const groupPlans = plans.filter((p) => p.groupId === groupId);
+                        if (groupPlans.length === 1) {
+                          setSelectedPlan(groupPlans[0]);
+                          setMainTab('subscribe');
+                        } else if (groupPlans.length > 1) {
+                          setRenewGroupId(groupId);
                           setMainTab('subscribe');
                         }
                       }}
