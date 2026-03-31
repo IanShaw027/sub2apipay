@@ -38,7 +38,10 @@ function getTexts(locale: Locale) {
           `Within ${w} ${u === 'minute' ? 'minute(s)' : u === 'day' ? 'day(s)' : 'hour(s)'}, max ${m} cancellation(s) (${mode === 'fixed' ? 'fixed window' : 'rolling window'})`,
         overrideEnvConfig: 'Override Env Config',
         overrideEnvHint: 'When enabled, database settings override environment variables',
-        enabledPaymentTypes: 'Enabled Payment Types',
+        providerConfig: 'Payment Providers',
+        providerConfigured: 'Configured',
+        providerNotConfigured: 'Not Configured (set in env vars)',
+        enabledPaymentTypes: 'Enabled Payment Channels',
         minRechargeAmount: 'Min Recharge Amount',
         maxRechargeAmount: 'Max Recharge Amount',
         dailyRechargeLimit: 'Daily Recharge Limit (0=unlimited)',
@@ -74,7 +77,10 @@ function getTexts(locale: Locale) {
           `${w} ${u === 'minute' ? '分钟' : u === 'day' ? '天' : '小时'}内最多可取消 ${m} 次（${mode === 'fixed' ? '固定窗口' : '滚动窗口'}）`,
         overrideEnvConfig: '覆盖环境变量配置',
         overrideEnvHint: '开启后，数据库配置将覆盖环境变量',
-        enabledPaymentTypes: '启用的支付方式',
+        providerConfig: '支付服务商',
+        providerConfigured: '已配置',
+        providerNotConfigured: '未配置（需在环境变量中设置）',
+        enabledPaymentTypes: '启用的支付渠道',
         minRechargeAmount: '最小充值金额',
         maxRechargeAmount: '最大充值金额',
         dailyRechargeLimit: '每日充值限额（0=不限）',
@@ -83,15 +89,28 @@ function getTexts(locale: Locale) {
       };
 }
 
-// ── Payment type display names ──
+// ── Payment type & provider display names ──
 
 const PAYMENT_TYPE_LABELS: Record<string, { zh: string; en: string }> = {
-  alipay: { zh: '支付宝（易支付）', en: 'Alipay (EasyPay)' },
-  wxpay: { zh: '微信支付（易支付）', en: 'WeChat Pay (EasyPay)' },
-  alipay_direct: { zh: '支付宝（直连）', en: 'Alipay (Direct)' },
-  wxpay_direct: { zh: '微信支付（直连）', en: 'WeChat Pay (Direct)' },
-  stripe: { zh: 'Stripe（国际卡）', en: 'Stripe (International)' },
+  alipay: { zh: '支付宝', en: 'Alipay' },
+  wxpay: { zh: '微信支付', en: 'WeChat Pay' },
+  alipay_direct: { zh: '支付宝', en: 'Alipay' },
+  wxpay_direct: { zh: '微信支付', en: 'WeChat Pay' },
+  stripe: { zh: 'Stripe', en: 'Stripe' },
 };
+
+const PROVIDER_LABELS: Record<string, { zh: string; en: string }> = {
+  easypay: { zh: '易支付', en: 'EasyPay' },
+  alipay: { zh: '支付宝直连', en: 'Alipay Direct' },
+  wxpay: { zh: '微信支付直连', en: 'WeChat Pay Direct' },
+  stripe: { zh: 'Stripe', en: 'Stripe' },
+};
+
+interface ProviderInfo {
+  key: string;
+  configured: boolean;
+  types: string[];
+}
 
 // ── Main Content ──
 
@@ -127,6 +146,7 @@ function PaymentConfigContent() {
   const [rcOrderTimeout, setRcOrderTimeout] = useState('');
   const [loadingEnvDefaults, setLoadingEnvDefaults] = useState(false);
   const [availablePaymentTypes, setAvailablePaymentTypes] = useState<string[]>([]);
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
 
   // Fetch recharge config
   const fetchRechargeConfig = useCallback(async () => {
@@ -177,6 +197,7 @@ function PaymentConfigContent() {
         const data = await res.json();
         const d = data.defaults;
         if (data.availablePaymentTypes) setAvailablePaymentTypes(data.availablePaymentTypes);
+        if (data.providers) setProviders(data.providers);
         setRcEnabledPaymentTypes(d.ENABLED_PAYMENT_TYPES || '');
         setRcMinAmount(d.RECHARGE_MIN_AMOUNT || '1');
         setRcMaxAmount(d.RECHARGE_MAX_AMOUNT || '1000');
@@ -371,47 +392,89 @@ function PaymentConfigContent() {
             </div>
           ) : (
             <>
+              {/* 服务商配置 + 渠道开关 */}
               <div className="mb-4">
-                <label className={labelCls}>{t.enabledPaymentTypes}</label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {availablePaymentTypes.map((type) => {
-                    const enabled = rcEnabledPaymentTypes
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean);
-                    const isSelected = enabled.includes(type);
-                    const label = PAYMENT_TYPE_LABELS[type]?.[locale] || type;
+                <label className={labelCls}>{t.providerConfig}</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                  {providers.map((provider) => {
+                    const providerLabel = PROVIDER_LABELS[provider.key]?.[locale] || provider.key;
+                    const enabledSet = new Set(
+                      rcEnabledPaymentTypes
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    );
                     return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => {
-                          const current = rcEnabledPaymentTypes
-                            .split(',')
-                            .map((s) => s.trim())
-                            .filter(Boolean);
-                          const next = isSelected ? current.filter((t) => t !== type) : [...current, type];
-                          setRcEnabledPaymentTypes(next.join(','));
-                        }}
+                      <div
+                        key={provider.key}
                         className={[
-                          'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600'
+                          'rounded-lg border p-3',
+                          provider.configured
+                            ? isDark
+                              ? 'border-slate-600 bg-slate-700/50'
+                              : 'border-slate-200 bg-slate-50'
                             : isDark
-                              ? 'border-slate-600 text-slate-400 hover:border-slate-500'
-                              : 'border-slate-300 text-slate-500 hover:border-slate-400',
+                              ? 'border-slate-700 bg-slate-800/30 opacity-60'
+                              : 'border-slate-200 bg-slate-100/50 opacity-60',
                         ].join(' ')}
                       >
-                        {isSelected ? '✓ ' : ''}
-                        {label}
-                      </button>
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className={['text-sm font-medium', isDark ? 'text-slate-200' : 'text-slate-800'].join(' ')}
+                          >
+                            {providerLabel}
+                          </span>
+                          <span
+                            className={[
+                              'text-[10px] px-2 py-0.5 rounded-full',
+                              provider.configured
+                                ? isDark
+                                  ? 'bg-emerald-500/20 text-emerald-300'
+                                  : 'bg-emerald-100 text-emerald-700'
+                                : isDark
+                                  ? 'bg-slate-600 text-slate-400'
+                                  : 'bg-slate-200 text-slate-500',
+                            ].join(' ')}
+                          >
+                            {provider.configured ? t.providerConfigured : t.providerNotConfigured}
+                          </span>
+                        </div>
+                        {provider.configured && (
+                          <div className="flex flex-wrap gap-2">
+                            {provider.types.map((type) => {
+                              const isEnabled = enabledSet.has(type);
+                              const typeLabel = PAYMENT_TYPE_LABELS[type]?.[locale] || type;
+                              return (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  onClick={() => {
+                                    const current = rcEnabledPaymentTypes
+                                      .split(',')
+                                      .map((s) => s.trim())
+                                      .filter(Boolean);
+                                    const next = isEnabled ? current.filter((t) => t !== type) : [...current, type];
+                                    setRcEnabledPaymentTypes(next.join(','));
+                                  }}
+                                  className={[
+                                    'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+                                    isEnabled
+                                      ? 'border-emerald-500 bg-emerald-500/15 text-emerald-600'
+                                      : isDark
+                                        ? 'border-slate-500 text-slate-400 hover:border-slate-400'
+                                        : 'border-slate-300 text-slate-500 hover:border-slate-400',
+                                  ].join(' ')}
+                                >
+                                  {isEnabled ? '✓ ' : ''}
+                                  {typeLabel}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
-                  {availablePaymentTypes.length === 0 && (
-                    <span className={['text-xs', isDark ? 'text-slate-500' : 'text-slate-400'].join(' ')}>
-                      {locale === 'en' ? 'No payment providers configured' : '未配置支付服务商'}
-                    </span>
-                  )}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
