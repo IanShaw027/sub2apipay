@@ -89,7 +89,7 @@ model AuditLog {
 // ── 渠道展示配置 ──
 model Channel {
   id             String   @id @default(cuid())
-  groupId        Int      @unique @map("group_id")
+  groupId        Int?     @unique @map("group_id")
   name           String
   platform       String   @default("claude")
   rateMultiplier Decimal  @db.Decimal(10, 4) @map("rate_multiplier")

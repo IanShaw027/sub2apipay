@@ -4,7 +4,7 @@ import { verifyAdminToken, unauthorizedResponse } from '@/lib/admin-auth';
 import { prisma } from '@/lib/db';
 
 const updateChannelSchema = z.object({
-  group_id: z.number().int().positive().optional(),
+  group_id: z.number().int().positive().nullable().optional(),
   name: z.string().min(1).max(100).optional(),
   platform: z.string().min(1).max(50).optional(),
   rate_multiplier: z.number().positive().optional(),
@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // 如果更新了 group_id，检查唯一性
-    if (body.group_id !== undefined && Number(body.group_id) !== existing.groupId) {
+    if (body.group_id !== undefined && body.group_id !== null && Number(body.group_id) !== existing.groupId) {
       const conflict = await prisma.channel.findUnique({
         where: { groupId: Number(body.group_id) },
       });

@@ -21,18 +21,20 @@ export async function GET(request: NextRequest) {
       orderBy: { sortOrder: 'asc' },
     });
 
-    // 并发校验每个渠道对应的 Sub2API 分组是否存在
+    // 并发校验每个渠道对应的 Sub2API 分组是否存在（未关联分组的渠道直接展示）
     const results = await Promise.all(
       channels.map(async (ch) => {
-        let groupActive = false;
-        try {
-          const group = await getGroup(ch.groupId);
-          groupActive = group !== null && group.status === 'active';
-        } catch {
-          groupActive = false;
-        }
+        if (ch.groupId !== null) {
+          let groupActive = false;
+          try {
+            const group = await getGroup(ch.groupId);
+            groupActive = group !== null && group.status === 'active';
+          } catch {
+            groupActive = false;
+          }
 
-        if (!groupActive) return null; // 过滤掉分组不存在的渠道
+          if (!groupActive) return null; // 过滤掉分组不存在的渠道
+        }
 
         return {
           id: ch.id,

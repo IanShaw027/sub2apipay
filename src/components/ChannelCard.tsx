@@ -7,7 +7,7 @@ import { PlatformBadge, getPlatformStyle } from '@/lib/platform-style';
 
 export interface ChannelInfo {
   id: string;
-  groupId: number;
+  groupId: number | null;
   name: string;
   platform: string;
   rateMultiplier: number;

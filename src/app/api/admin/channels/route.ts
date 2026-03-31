@@ -15,11 +15,13 @@ export async function GET(request: NextRequest) {
     const results = await Promise.all(
       channels.map(async (channel) => {
         let groupExists = false;
-        try {
-          const group = await getGroup(channel.groupId);
-          groupExists = group !== null;
-        } catch {
-          groupExists = false;
+        if (channel.groupId !== null) {
+          try {
+            const group = await getGroup(channel.groupId);
+            groupExists = group !== null;
+          } catch {
+            groupExists = false;
+          }
         }
         return {
           ...channel,
@@ -43,8 +45,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { group_id, name, platform, rate_multiplier, description, models, features, sort_order, enabled } = body;
 
-    if (!group_id || !name || !platform || rate_multiplier === undefined) {
-      return NextResponse.json({ error: '缺少必填字段: group_id, name, platform, rate_multiplier' }, { status: 400 });
+    if (!name || !platform || rate_multiplier === undefined) {
+      return NextResponse.json({ error: '缺少必填字段: name, platform, rate_multiplier' }, { status: 400 });
     }
 
     if (typeof name !== 'string' || name.trim() === '') {
@@ -57,18 +59,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'sort_order 必须是非负整数' }, { status: 400 });
     }
 
-    // 验证 group_id 唯一性
-    const existing = await prisma.channel.findUnique({
-      where: { groupId: Number(group_id) },
-    });
+    // 验证 group_id 唯一性（仅在提供了 group_id 时）
+    if (group_id) {
+      const existing = await prisma.channel.findUnique({
+        where: { groupId: Number(group_id) },
+      });
 
-    if (existing) {
-      return NextResponse.json({ error: `分组 ID ${group_id} 已被渠道「${existing.name}」使用` }, { status: 409 });
+      if (existing) {
+        return NextResponse.json({ error: `分组 ID ${group_id} 已被渠道「${existing.name}」使用` }, { status: 409 });
+      }
     }
 
     const channel = await prisma.channel.create({
       data: {
-        groupId: Number(group_id),
+        groupId: group_id ? Number(group_id) : null,
         name,
         platform,
         rateMultiplier: rate_multiplier,
