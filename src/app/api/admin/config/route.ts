@@ -54,6 +54,7 @@ export async function PUT(request: NextRequest) {
       'CANCEL_RATE_LIMIT_WINDOW',
       'CANCEL_RATE_LIMIT_UNIT',
       'CANCEL_RATE_LIMIT_MAX',
+      'CANCEL_RATE_LIMIT_WINDOW_MODE',
       'MAX_PENDING_ORDERS',
     ]);
 

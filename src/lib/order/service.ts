@@ -465,44 +465,72 @@ export async function cancelOrder(orderId: string, userId: number, locale: Local
     'CANCEL_RATE_LIMIT_WINDOW',
     'CANCEL_RATE_LIMIT_UNIT',
     'CANCEL_RATE_LIMIT_MAX',
+    'CANCEL_RATE_LIMIT_WINDOW_MODE',
   ]);
   if (rateLimitConfigs['CANCEL_RATE_LIMIT_ENABLED'] === 'true') {
-    const window = parseInt(rateLimitConfigs['CANCEL_RATE_LIMIT_WINDOW'] || '0', 10);
-    const maxCount = parseInt(rateLimitConfigs['CANCEL_RATE_LIMIT_MAX'] || '0', 10);
-    const unit = rateLimitConfigs['CANCEL_RATE_LIMIT_UNIT'] || 'hour';
-    if (window > 0 && maxCount > 0) {
-      const unitMs = unit === 'minute' ? 60_000 : unit === 'day' ? 86_400_000 : 3_600_000;
-      const windowStart = new Date(Date.now() - window * unitMs);
-      const recentCancelCount = await prisma.auditLog.count({
-        where: {
-          action: 'ORDER_CANCELLED',
-          operator: `user:${userId}`,
-          createdAt: { gte: windowStart },
-        },
-      });
-      if (recentCancelCount >= maxCount) {
-        const unitLabel =
-          locale === 'en'
-            ? unit === 'minute'
-              ? 'minute(s)'
-              : unit === 'day'
-                ? 'day(s)'
-                : 'hour(s)'
-            : unit === 'minute'
-              ? '分钟'
-              : unit === 'day'
-                ? '天'
-                : '小时';
-        throw new OrderError(
-          'CANCEL_RATE_LIMITED',
-          message(
-            locale,
-            `取消订单过于频繁，${window} ${unitLabel}内最多可取消 ${maxCount} 次`,
-            `Too many cancellations. Maximum ${maxCount} cancellations per ${window} ${unitLabel}`,
-          ),
-          429,
-        );
+    const windowSize = parseInt(rateLimitConfigs['CANCEL_RATE_LIMIT_WINDOW'] || '1', 10) || 1;
+    const maxCount = parseInt(rateLimitConfigs['CANCEL_RATE_LIMIT_MAX'] || '10', 10) || 10;
+    const unit = rateLimitConfigs['CANCEL_RATE_LIMIT_UNIT'] || 'day';
+    const windowMode = rateLimitConfigs['CANCEL_RATE_LIMIT_WINDOW_MODE'] || 'rolling';
+
+    let windowStart: Date;
+    if (windowMode === 'fixed') {
+      // 固定窗口：从自然时间边界起算
+      const now = new Date();
+      if (unit === 'day') {
+        // 每日 00:00 起算，窗口大小 N 天
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - (windowSize - 1));
+        windowStart = start;
+      } else if (unit === 'minute') {
+        // 每分钟 :00 起算
+        const start = new Date(now);
+        start.setSeconds(0, 0);
+        start.setMinutes(start.getMinutes() - (windowSize - 1));
+        windowStart = start;
+      } else {
+        // hour: 每小时 :00:00 起算
+        const start = new Date(now);
+        start.setMinutes(0, 0, 0);
+        start.setHours(start.getHours() - (windowSize - 1));
+        windowStart = start;
       }
+    } else {
+      // 滚动窗口：从当前时刻往前推 N 个单位
+      const unitMs = unit === 'minute' ? 60_000 : unit === 'day' ? 86_400_000 : 3_600_000;
+      windowStart = new Date(Date.now() - windowSize * unitMs);
+    }
+
+    const recentCancelCount = await prisma.auditLog.count({
+      where: {
+        action: 'ORDER_CANCELLED',
+        operator: `user:${userId}`,
+        createdAt: { gte: windowStart },
+      },
+    });
+    if (recentCancelCount >= maxCount) {
+      const unitLabel =
+        locale === 'en'
+          ? unit === 'minute'
+            ? 'minute(s)'
+            : unit === 'day'
+              ? 'day(s)'
+              : 'hour(s)'
+          : unit === 'minute'
+            ? '分钟'
+            : unit === 'day'
+              ? '天'
+              : '小时';
+      throw new OrderError(
+        'CANCEL_RATE_LIMITED',
+        message(
+          locale,
+          `取消订单过于频繁，${windowSize} ${unitLabel}内最多可取消 ${maxCount} 次`,
+          `Too many cancellations. Maximum ${maxCount} cancellations per ${windowSize} ${unitLabel}`,
+        ),
+        429,
+      );
     }
   }
 

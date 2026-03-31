@@ -120,8 +120,11 @@ function getTexts(locale: Locale) {
         cancelRateLimitUnitHour: 'Hours',
         cancelRateLimitUnitDay: 'Days',
         maxPendingOrders: 'Max Pending Orders',
-        cancelRateLimitHint: (w: string, u: string, m: string) =>
-          `Within ${w} ${u === 'minute' ? 'minute(s)' : u === 'day' ? 'day(s)' : 'hour(s)'}, max ${m} cancellation(s)`,
+        cancelRateLimitWindowMode: 'Window Mode',
+        cancelRateLimitWindowModeRolling: 'Rolling',
+        cancelRateLimitWindowModeFixed: 'Fixed',
+        cancelRateLimitHint: (w: string, u: string, m: string, mode: string) =>
+          `Within ${w} ${u === 'minute' ? 'minute(s)' : u === 'day' ? 'day(s)' : 'hour(s)'}, max ${m} cancellation(s) (${mode === 'fixed' ? 'fixed window' : 'rolling window'})`,
         tabRechargeConfig: 'Recharge Config',
         tabChannelManagement: 'Channel Management',
       }
@@ -194,8 +197,11 @@ function getTexts(locale: Locale) {
         cancelRateLimitUnitHour: '小时',
         cancelRateLimitUnitDay: '天',
         maxPendingOrders: '最多可存在支付中订单',
-        cancelRateLimitHint: (w: string, u: string, m: string) =>
-          `${w} ${u === 'minute' ? '分钟' : u === 'day' ? '天' : '小时'}内最多可取消 ${m} 次`,
+        cancelRateLimitWindowMode: '窗口模式',
+        cancelRateLimitWindowModeRolling: '滚动',
+        cancelRateLimitWindowModeFixed: '固定',
+        cancelRateLimitHint: (w: string, u: string, m: string, mode: string) =>
+          `${w} ${u === 'minute' ? '分钟' : u === 'day' ? '天' : '小时'}内最多可取消 ${m} 次（${mode === 'fixed' ? '固定窗口' : '滚动窗口'}）`,
         tabRechargeConfig: '充值配置',
         tabChannelManagement: '渠道管理',
       };
@@ -268,8 +274,9 @@ function ChannelsContent() {
   const [rcBalanceEnabled, setRcBalanceEnabled] = useState(true);
   const [rcCancelRateLimitEnabled, setRcCancelRateLimitEnabled] = useState(false);
   const [rcCancelRateLimitWindow, setRcCancelRateLimitWindow] = useState('1');
-  const [rcCancelRateLimitUnit, setRcCancelRateLimitUnit] = useState('hour');
-  const [rcCancelRateLimitMax, setRcCancelRateLimitMax] = useState('3');
+  const [rcCancelRateLimitUnit, setRcCancelRateLimitUnit] = useState('day');
+  const [rcCancelRateLimitMax, setRcCancelRateLimitMax] = useState('10');
+  const [rcCancelRateLimitWindowMode, setRcCancelRateLimitWindowMode] = useState('rolling');
   const [rcMaxPendingOrders, setRcMaxPendingOrders] = useState('3');
   const [rcSaving, setRcSaving] = useState(false);
 
@@ -317,8 +324,9 @@ function ChannelsContent() {
           if (c.key === 'BALANCE_PAYMENT_DISABLED') setRcBalanceEnabled(c.value !== 'true');
           if (c.key === 'CANCEL_RATE_LIMIT_ENABLED') setRcCancelRateLimitEnabled(c.value === 'true');
           if (c.key === 'CANCEL_RATE_LIMIT_WINDOW') setRcCancelRateLimitWindow(c.value || '1');
-          if (c.key === 'CANCEL_RATE_LIMIT_UNIT') setRcCancelRateLimitUnit(c.value || 'hour');
-          if (c.key === 'CANCEL_RATE_LIMIT_MAX') setRcCancelRateLimitMax(c.value || '3');
+          if (c.key === 'CANCEL_RATE_LIMIT_UNIT') setRcCancelRateLimitUnit(c.value || 'day');
+          if (c.key === 'CANCEL_RATE_LIMIT_MAX') setRcCancelRateLimitMax(c.value || '10');
+          if (c.key === 'CANCEL_RATE_LIMIT_WINDOW_MODE') setRcCancelRateLimitWindowMode(c.value || 'rolling');
           if (c.key === 'MAX_PENDING_ORDERS') setRcMaxPendingOrders(c.value || '3');
         }
       }
@@ -370,6 +378,12 @@ function ChannelsContent() {
               value: rcCancelRateLimitMax,
               group: 'payment',
               label: '频率限制最大次数',
+            },
+            {
+              key: 'CANCEL_RATE_LIMIT_WINDOW_MODE',
+              value: rcCancelRateLimitWindowMode,
+              group: 'payment',
+              label: '频率限制窗口模式',
             },
             {
               key: 'MAX_PENDING_ORDERS',
@@ -790,7 +804,7 @@ function ChannelsContent() {
             </div>
             {rcCancelRateLimitEnabled && (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div>
                     <label className={labelCls}>{t.cancelRateLimitWindow}</label>
                     <input
@@ -825,9 +839,25 @@ function ChannelsContent() {
                       className={inputCls}
                     />
                   </div>
+                  <div>
+                    <label className={labelCls}>{t.cancelRateLimitWindowMode}</label>
+                    <select
+                      value={rcCancelRateLimitWindowMode}
+                      onChange={(e) => setRcCancelRateLimitWindowMode(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="rolling">{t.cancelRateLimitWindowModeRolling}</option>
+                      <option value="fixed">{t.cancelRateLimitWindowModeFixed}</option>
+                    </select>
+                  </div>
                 </div>
                 <p className={['mt-1 text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
-                  {t.cancelRateLimitHint(rcCancelRateLimitWindow, rcCancelRateLimitUnit, rcCancelRateLimitMax)}
+                  {t.cancelRateLimitHint(
+                    rcCancelRateLimitWindow,
+                    rcCancelRateLimitUnit,
+                    rcCancelRateLimitMax,
+                    rcCancelRateLimitWindowMode,
+                  )}
                 </p>
               </>
             )}
