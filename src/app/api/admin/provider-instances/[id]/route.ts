@@ -117,6 +117,27 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       data.config = encrypt(JSON.stringify(mergedConfig));
+
+      // 检查是否有实质性凭证变更（非 masked 值的变化）
+      const hasCredentialChange = Object.entries(mergedConfig).some(
+        ([key, value]) => isSensitiveField(key) && value !== existingConfig[key],
+      );
+      if (hasCredentialChange) {
+        const pendingCount = await prisma.order.count({
+          where: {
+            providerInstanceId: id,
+            status: { in: ['PENDING', 'PAID', 'RECHARGING'] },
+          },
+        });
+        if (pendingCount > 0) {
+          return NextResponse.json(
+            {
+              error: `该实例有 ${pendingCount} 个进行中的订单，修改凭证可能导致回调验签失败。请等待订单完成后再修改，或先禁用该实例。`,
+            },
+            { status: 409 },
+          );
+        }
+      }
     }
 
     if (enabled !== undefined) data.enabled = enabled;
@@ -142,7 +163,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-// DELETE: Delete an instance
+// DELETE: Delete an instance (blocked if pending orders exist)
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await verifyAdminToken(request))) return unauthorizedResponse(request);
 
@@ -155,6 +176,21 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     if (!existing) {
       return NextResponse.json({ error: '支付实例不存在' }, { status: 404 });
+    }
+
+    // 检查是否有进行中的订单使用此实例
+    const pendingCount = await prisma.order.count({
+      where: {
+        providerInstanceId: id,
+        status: { in: ['PENDING', 'PAID', 'RECHARGING'] },
+      },
+    });
+
+    if (pendingCount > 0) {
+      return NextResponse.json(
+        { error: `该实例有 ${pendingCount} 个进行中的订单，无法删除。请等待订单完成或先禁用该实例。` },
+        { status: 409 },
+      );
     }
 
     await prisma.paymentProviderInstance.delete({ where: { id } });
