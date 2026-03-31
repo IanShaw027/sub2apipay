@@ -169,9 +169,6 @@ const PROVIDER_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
     { key: 'apiBase', label: { en: 'API Base URL', zh: 'API 基础地址' }, sensitive: false, optional: true },
     { key: 'notifyUrl', label: { en: 'Notify URL', zh: '异步通知地址' }, sensitive: false, optional: true },
     { key: 'returnUrl', label: { en: 'Return URL', zh: '同步跳转地址' }, sensitive: false, optional: true },
-    { key: 'cid', label: { en: 'Channel ID', zh: '渠道 ID' }, sensitive: false, optional: true },
-    { key: 'cidAlipay', label: { en: 'Alipay Channel ID', zh: '支付宝渠道 ID' }, sensitive: false, optional: true },
-    { key: 'cidWxpay', label: { en: 'WeChat Channel ID', zh: '微信渠道 ID' }, sensitive: false, optional: true },
   ],
   alipay: [
     { key: 'appId', label: { en: 'App ID', zh: 'App ID' }, sensitive: false },
@@ -1113,33 +1110,57 @@ function PaymentConfigContent() {
                   <p className={`text-xs mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {t.supportedChannelsHint}
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="space-y-2">
                     {(PROVIDER_SUPPORTED_TYPES[instanceForm.providerKey] || []).map((type) => {
                       const isActive = instanceForm.supportedTypes.includes(type);
+                      const cidKey = type === 'alipay' ? 'cidAlipay' : type === 'wxpay' ? 'cidWxpay' : '';
+                      const cidLabel =
+                        type === 'alipay'
+                          ? locale === 'en'
+                            ? 'Alipay Channel ID'
+                            : '支付宝渠道 ID'
+                          : locale === 'en'
+                            ? 'WeChat Channel ID'
+                            : '微信渠道 ID';
                       return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() =>
-                            setInstanceForm((p) => ({
-                              ...p,
-                              supportedTypes: isActive
-                                ? p.supportedTypes.filter((t) => t !== type)
-                                : [...p.supportedTypes, type],
-                            }))
-                          }
-                          className={[
-                            'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
-                            isActive
-                              ? 'border-emerald-500 bg-emerald-500/15 text-emerald-600'
-                              : isDark
-                                ? 'border-slate-500 text-slate-400 hover:border-slate-400'
-                                : 'border-slate-300 text-slate-500 hover:border-slate-400',
-                          ].join(' ')}
-                        >
-                          {isActive ? '✓ ' : ''}
-                          {PAYMENT_TYPE_LABELS[type]?.[locale] || type}
-                        </button>
+                        <div key={type} className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setInstanceForm((p) => ({
+                                ...p,
+                                supportedTypes: isActive
+                                  ? p.supportedTypes.filter((t) => t !== type)
+                                  : [...p.supportedTypes, type],
+                              }))
+                            }
+                            className={[
+                              'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors shrink-0',
+                              isActive
+                                ? 'border-emerald-500 bg-emerald-500/15 text-emerald-600'
+                                : isDark
+                                  ? 'border-slate-500 text-slate-400 hover:border-slate-400'
+                                  : 'border-slate-300 text-slate-500 hover:border-slate-400',
+                            ].join(' ')}
+                          >
+                            {isActive ? '✓ ' : ''}
+                            {PAYMENT_TYPE_LABELS[type]?.[locale] || type}
+                          </button>
+                          {isActive && cidKey && instanceForm.providerKey === 'easypay' && (
+                            <input
+                              type="text"
+                              value={instanceForm.config[cidKey] ?? ''}
+                              onChange={(e) =>
+                                setInstanceForm({
+                                  ...instanceForm,
+                                  config: { ...instanceForm.config, [cidKey]: e.target.value },
+                                })
+                              }
+                              className={[inputCls, 'flex-1'].join(' ')}
+                              placeholder={cidLabel}
+                            />
+                          )}
+                        </div>
                       );
                     })}
                   </div>
