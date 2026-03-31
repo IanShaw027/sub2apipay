@@ -66,6 +66,8 @@ function getTexts(locale: Locale) {
         instanceSaveFailed: 'Failed to save instance',
         instanceDeleteFailed: 'Failed to delete instance',
         allChannels: 'All Channels',
+        sub2apiAdminApiKey: 'Sub2API Admin API Key',
+        sub2apiAdminApiKeyHint: 'Leave empty to use environment variable',
       }
     : {
         missingToken: '缺少管理员凭证',
@@ -124,6 +126,8 @@ function getTexts(locale: Locale) {
         instanceSaveFailed: '保存实例失败',
         instanceDeleteFailed: '删除实例失败',
         allChannels: '全部渠道',
+        sub2apiAdminApiKey: 'Sub2API Admin API Key',
+        sub2apiAdminApiKeyHint: '留空则使用环境变量',
       };
 }
 
@@ -241,6 +245,7 @@ function PaymentConfigContent() {
   const [rcMaxPendingOrders, setRcMaxPendingOrders] = useState('3');
   const [rcSaving, setRcSaving] = useState(false);
   const [rcLoadBalanceStrategy, setRcLoadBalanceStrategy] = useState('round-robin');
+  const [rcSub2apiKey, setRcSub2apiKey] = useState('');
 
   // Override env
   const [rcOverrideEnv, setRcOverrideEnv] = useState(false);
@@ -310,6 +315,7 @@ function PaymentConfigContent() {
         if (c.key === 'DAILY_RECHARGE_LIMIT') setRcDailyLimit(c.value);
         if (c.key === 'ORDER_TIMEOUT_MINUTES') setRcOrderTimeout(c.value);
         if (c.key === 'LOAD_BALANCE_STRATEGY') setRcLoadBalanceStrategy(c.value || 'round-robin');
+        if (c.key === 'SUB2API_ADMIN_API_KEY') setRcSub2apiKey(c.value);
         if (overrideKeys.includes(c.key)) hasOverride = true;
       }
       setRcOverrideEnv(hasOverride);
@@ -518,6 +524,12 @@ function PaymentConfigContent() {
             },
             { key: 'MAX_PENDING_ORDERS', value: rcMaxPendingOrders, group: 'payment', label: '最多可存在支付中订单' },
             { key: 'LOAD_BALANCE_STRATEGY', value: rcLoadBalanceStrategy, group: 'payment', label: '负载均衡策略' },
+            {
+              key: 'SUB2API_ADMIN_API_KEY',
+              value: rcSub2apiKey,
+              group: 'connection',
+              label: 'Sub2API Admin API Key',
+            },
             ...(rcOverrideEnv
               ? [
                   { key: 'ENABLED_PROVIDERS', value: rcEnabledProviders, group: 'payment', label: '启用的服务商' },
@@ -652,6 +664,20 @@ function PaymentConfigContent() {
               {`${rcPrefix.trim() || 'Sub2API'} 100 ${rcSuffix.trim() || 'CNY'}`.trim()}
             </div>
           </div>
+        </div>
+
+        {/* Sub2API Admin API Key */}
+        <div className="mb-4">
+          <label className={labelCls}>{t.sub2apiAdminApiKey}</label>
+          <input
+            type="password"
+            value={rcSub2apiKey}
+            onChange={(e) => setRcSub2apiKey(e.target.value)}
+            className={[inputCls, 'max-w-md'].join(' ')}
+            placeholder={t.sub2apiAdminApiKeyHint}
+            autoComplete="off"
+          />
+          <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.sub2apiAdminApiKeyHint}</p>
         </div>
 
         {/* Toggles row */}

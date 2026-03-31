@@ -7,6 +7,10 @@ vi.mock('@/lib/config', () => ({
   }),
 }));
 
+vi.mock('@/lib/system-config', () => ({
+  getSystemConfig: () => Promise.resolve(undefined),
+}));
+
 import { getUser, createAndRedeem, subtractBalance } from '@/lib/sub2api/client';
 
 describe('Sub2API Client', () => {

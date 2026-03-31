@@ -4,6 +4,7 @@ import { getAllSystemConfigs, setSystemConfigs, getSystemConfig } from '@/lib/sy
 import { prisma } from '@/lib/db';
 
 const SENSITIVE_PATTERNS = ['KEY', 'SECRET', 'PASSWORD', 'PRIVATE'];
+const MASK_RE = /\*{4,}/;
 
 function maskSensitiveValue(key: string, value: string): string {
   const isSensitive = SENSITIVE_PATTERNS.some((pattern) => key.toUpperCase().includes(pattern));
@@ -91,6 +92,7 @@ const ALLOWED_CONFIG_KEYS = new Set([
   'MAX_PENDING_ORDERS',
   'LOAD_BALANCE_STRATEGY',
   'ENABLED_PROVIDERS',
+  'SUB2API_ADMIN_API_KEY',
 ]);
 
 export async function PUT(request: NextRequest) {
@@ -116,8 +118,14 @@ export async function PUT(request: NextRequest) {
     const blocked = await validateEnabledProviders(configs);
     if (blocked) return blocked;
 
+    // Skip masked sensitive values (user didn't change them)
+    const filteredConfigs = configs.filter(
+      (c: { key: string; value: string }) =>
+        !(SENSITIVE_PATTERNS.some((p) => c.key.toUpperCase().includes(p)) && MASK_RE.test(c.value)),
+    );
+
     await setSystemConfigs(
-      configs.map((c: { key: string; value: string; group?: string; label?: string }) => ({
+      filteredConfigs.map((c: { key: string; value: string; group?: string; label?: string }) => ({
         key: c.key,
         value: c.value,
         group: c.group,

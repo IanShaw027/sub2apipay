@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser, getCurrentUserByToken } from '@/lib/sub2api/client';
+import { getCurrentUserByToken } from '@/lib/sub2api/client';
 import { getEnv } from '@/lib/config';
 import { queryMethodLimits } from '@/lib/order/limits';
 import { initPaymentProviders, paymentRegistry } from '@/lib/payment';
@@ -74,10 +74,8 @@ export async function GET(request: NextRequest) {
       },
     );
 
-    const [
-      user,
-      { enabledTypes, methodLimits, balanceDisabled, maxPendingOrders, minAmount, maxAmount, maxDailyAmount },
-    ] = await Promise.all([getUser(userId), configPromise]);
+    const { enabledTypes, methodLimits, balanceDisabled, maxPendingOrders, minAmount, maxAmount, maxDailyAmount } =
+      await configPromise;
 
     // 收集 sublabel 覆盖
     const sublabelOverrides: Record<string, string> = {};
@@ -108,8 +106,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       user: {
-        id: user.id,
-        status: user.status,
+        id: tokenUser.id,
+        status: tokenUser.status,
       },
       config: {
         enabledPaymentTypes: enabledTypes,

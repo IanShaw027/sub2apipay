@@ -1,15 +1,17 @@
 import { getEnv } from '@/lib/config';
+import { getSystemConfig } from '@/lib/system-config';
 import type { Sub2ApiUser, Sub2ApiRedeemCode, Sub2ApiGroup, Sub2ApiSubscription } from './types';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const RECHARGE_TIMEOUT_MS = 30_000;
 const RECHARGE_MAX_ATTEMPTS = 2;
 
-function getHeaders(idempotencyKey?: string): Record<string, string> {
-  const env = getEnv();
+async function getHeaders(idempotencyKey?: string): Promise<Record<string, string>> {
+  const dbValue = await getSystemConfig('SUB2API_ADMIN_API_KEY');
+  const apiKey = dbValue?.trim() || getEnv().SUB2API_ADMIN_API_KEY;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-api-key': env.SUB2API_ADMIN_API_KEY,
+    'x-api-key': apiKey,
   };
   if (idempotencyKey) {
     headers['Idempotency-Key'] = idempotencyKey;
@@ -42,7 +44,7 @@ export async function getCurrentUserByToken(token: string): Promise<Sub2ApiUser>
 export async function getUser(userId: number): Promise<Sub2ApiUser> {
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/users/${userId}`, {
-    headers: getHeaders(),
+    headers: await getHeaders(),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
@@ -82,7 +84,7 @@ export async function createAndRedeem(
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: getHeaders(`sub2apipay:recharge:${code}`),
+        headers: await getHeaders(`sub2apipay:recharge:${code}`),
         body,
         signal: AbortSignal.timeout(RECHARGE_TIMEOUT_MS),
       });
@@ -111,7 +113,7 @@ export async function createAndRedeem(
 export async function getAllGroups(): Promise<Sub2ApiGroup[]> {
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/groups/all`, {
-    headers: getHeaders(),
+    headers: await getHeaders(),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
@@ -126,7 +128,7 @@ export async function getAllGroups(): Promise<Sub2ApiGroup[]> {
 export async function getGroup(groupId: number): Promise<Sub2ApiGroup | null> {
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/groups/${groupId}`, {
-    headers: getHeaders(),
+    headers: await getHeaders(),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
@@ -151,7 +153,7 @@ export async function assignSubscription(
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/subscriptions/assign`, {
     method: 'POST',
-    headers: getHeaders(idempotencyKey),
+    headers: await getHeaders(idempotencyKey),
     body: JSON.stringify({
       user_id: userId,
       group_id: groupId,
@@ -173,7 +175,7 @@ export async function assignSubscription(
 export async function getUserSubscriptions(userId: number): Promise<Sub2ApiSubscription[]> {
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/users/${userId}/subscriptions`, {
-    headers: getHeaders(),
+    headers: await getHeaders(),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
@@ -190,7 +192,7 @@ export async function extendSubscription(subscriptionId: number, days: number): 
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/subscriptions/${subscriptionId}/extend`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: await getHeaders(),
     body: JSON.stringify({ days }),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
@@ -212,7 +214,7 @@ export async function subtractBalance(
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/users/${userId}/balance`, {
     method: 'POST',
-    headers: getHeaders(idempotencyKey),
+    headers: await getHeaders(idempotencyKey),
     body: JSON.stringify({
       operation: 'subtract',
       amount,
@@ -236,7 +238,7 @@ export async function searchUsers(
   const response = await fetch(
     `${env.SUB2API_BASE_URL}/api/v1/admin/users?search=${encodeURIComponent(keyword)}&page=1&page_size=30`,
     {
-      headers: getHeaders(),
+      headers: await getHeaders(),
       signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
     },
   );
@@ -266,7 +268,7 @@ export async function listSubscriptions(params?: {
   if (params?.page_size != null) qs.set('page_size', String(params.page_size));
 
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/subscriptions?${qs}`, {
-    headers: getHeaders(),
+    headers: await getHeaders(),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
@@ -288,7 +290,7 @@ export async function addBalance(userId: number, amount: number, notes: string, 
   const env = getEnv();
   const response = await fetch(`${env.SUB2API_BASE_URL}/api/v1/admin/users/${userId}/balance`, {
     method: 'POST',
-    headers: getHeaders(idempotencyKey),
+    headers: await getHeaders(idempotencyKey),
     body: JSON.stringify({
       operation: 'add',
       amount,
