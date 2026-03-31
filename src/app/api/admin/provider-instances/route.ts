@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     const result = instances.map((inst) => ({
       ...inst,
       config: decryptAndMaskConfig(inst.config),
+      limits: inst.limits ? JSON.parse(inst.limits) : null,
     }));
 
     return NextResponse.json({ instances: result });
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { providerKey, name, config, enabled, sortOrder, supportedTypes } = body;
+    const { providerKey, name, config, enabled, sortOrder, supportedTypes, limits } = body;
 
     // Validate required fields
     if (!providerKey || typeof providerKey !== 'string') {
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
         supportedTypes: supportedTypes ?? '',
         enabled: enabled ?? true,
         sortOrder: sortOrder ?? 0,
+        limits: limits ? JSON.stringify(limits) : null,
       },
     });
 

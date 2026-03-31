@@ -79,7 +79,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const instance = await prisma.paymentProviderInstance.findUnique({ where: { id } });
     if (!instance) return NextResponse.json({ error: '支付实例不存在' }, { status: 404 });
 
-    return NextResponse.json({ ...instance, config: decryptAndMaskConfig(instance.config) });
+    return NextResponse.json({
+      ...instance,
+      config: decryptAndMaskConfig(instance.config),
+      limits: instance.limits ? JSON.parse(instance.limits) : null,
+    });
   } catch (error) {
     console.error('Failed to get provider instance:', error instanceof Error ? error.message : String(error));
     return NextResponse.json({ error: '获取支付实例失败' }, { status: 500 });
@@ -93,7 +97,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { providerKey, name, config, enabled, sortOrder, supportedTypes } = body;
+    const { providerKey, name, config, enabled, sortOrder, supportedTypes, limits } = body;
 
     const existing = await prisma.paymentProviderInstance.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: '支付实例不存在' }, { status: 404 });
@@ -137,9 +141,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
       data.sortOrder = sortOrder;
     }
+    if (limits !== undefined) data.limits = limits ? JSON.stringify(limits) : null;
 
     const updated = await prisma.paymentProviderInstance.update({ where: { id }, data });
-    return NextResponse.json({ ...updated, config: decryptAndMaskConfig(updated.config) });
+    return NextResponse.json({
+      ...updated,
+      config: decryptAndMaskConfig(updated.config),
+      limits: updated.limits ? JSON.parse(updated.limits) : null,
+    });
   } catch (error) {
     console.error('Failed to update provider instance:', error instanceof Error ? error.message : String(error));
     return NextResponse.json({ error: '更新支付实例失败' }, { status: 500 });

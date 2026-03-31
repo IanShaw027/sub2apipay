@@ -197,6 +197,11 @@ const PROVIDER_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
   ],
 };
 
+interface ChannelLimits {
+  dailyLimit?: number;
+  singleLimit?: number;
+}
+
 interface ProviderInstanceData {
   id: string;
   providerKey: string;
@@ -205,6 +210,7 @@ interface ProviderInstanceData {
   supportedTypes: string;
   enabled: boolean;
   sortOrder: number;
+  limits: Record<string, ChannelLimits> | null;
   todayAmount?: number;
   createdAt: string;
   updatedAt: string;
@@ -217,6 +223,7 @@ interface InstanceFormData {
   sortOrder: number;
   config: Record<string, string>;
   supportedTypes: string[];
+  limits: Record<string, ChannelLimits>;
 }
 
 // ── Main Content ──
@@ -269,8 +276,10 @@ function PaymentConfigContent() {
     sortOrder: 0,
     config: {},
     supportedTypes: [],
+    limits: {},
   });
   const [instanceSaving, setInstanceSaving] = useState(false);
+  const [limitsOpen, setLimitsOpen] = useState(false);
 
   const enabledProviderKeys = useMemo(
     () =>
@@ -414,6 +423,7 @@ function PaymentConfigContent() {
           sortOrder: instanceForm.sortOrder,
           config: instanceForm.config,
           supportedTypes: instanceForm.supportedTypes.join(','),
+          limits: Object.keys(instanceForm.limits).length > 0 ? instanceForm.limits : null,
         }),
       });
       if (!res.ok) {
@@ -458,6 +468,7 @@ function PaymentConfigContent() {
       sortOrder: inst.sortOrder,
       config: { ...inst.config },
       supportedTypes: inst.supportedTypes ? inst.supportedTypes.split(',').filter(Boolean) : [],
+      limits: inst.limits ?? {},
     });
     setError('');
     setInstanceModalOpen(true);
@@ -473,6 +484,7 @@ function PaymentConfigContent() {
       sortOrder: 0,
       config: {},
       supportedTypes: PROVIDER_SUPPORTED_TYPES[key] || [],
+      limits: {},
     });
     setError('');
     setInstanceModalOpen(true);
@@ -875,6 +887,130 @@ function PaymentConfigContent() {
                     />
                   </div>
                 </div>
+
+                {/* ── 服务商管理 ── */}
+                {enabledProviderKeys.length > 0 && (
+                  <div className="pt-4 border-t border-dashed" style={{ borderColor: isDark ? '#475569' : '#e2e8f0' }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                          {t.providerManagement}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <label
+                            className={`text-xs whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                          >
+                            {t.loadBalanceStrategy}
+                          </label>
+                          <select
+                            value={rcLoadBalanceStrategy}
+                            onChange={(e) => setRcLoadBalanceStrategy(e.target.value)}
+                            className={[inputCls, '!w-auto !py-1.5 !text-xs'].join(' ')}
+                          >
+                            <option value="round-robin">{t.strategyRoundRobin}</option>
+                            <option value="least-amount">{t.strategyLeastAmount}</option>
+                          </select>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={openCreateInstance}
+                        className="inline-flex items-center rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-600"
+                      >
+                        + {t.addInstance}
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {enabledProviderKeys.map((pk) => {
+                        const providerInstances = instances.filter((i) => i.providerKey === pk);
+                        return (
+                          <div
+                            key={pk}
+                            className={[
+                              'rounded-lg border p-3',
+                              isDark ? 'border-slate-600 bg-slate-700/30' : 'border-slate-200 bg-slate-50/50',
+                            ].join(' ')}
+                          >
+                            <h4
+                              className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}
+                            >
+                              {PROVIDER_LABELS[pk]?.[locale] || pk}
+                            </h4>
+                            {providerInstances.length === 0 ? (
+                              <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                {locale === 'en' ? 'No instances' : '暂无实例'}
+                              </p>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {providerInstances.map((inst) => {
+                                  const instTypes = inst.supportedTypes
+                                    ? inst.supportedTypes.split(',').filter(Boolean)
+                                    : [];
+                                  return (
+                                    <div
+                                      key={inst.id}
+                                      className={[
+                                        'flex items-center justify-between rounded-lg border px-3 py-2',
+                                        isDark ? 'border-slate-500/50 bg-slate-800/60' : 'border-slate-200 bg-white',
+                                      ].join(' ')}
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+                                        <Toggle value={inst.enabled} onChange={() => toggleInstanceEnabled(inst)} />
+                                        <span
+                                          className={`text-sm font-medium ${inst.enabled ? (isDark ? 'text-slate-100' : 'text-slate-900') : isDark ? 'text-slate-500' : 'text-slate-400'}`}
+                                        >
+                                          {inst.name}
+                                        </span>
+                                        {instTypes.length > 0 ? (
+                                          instTypes.map((type) => (
+                                            <span
+                                              key={type}
+                                              className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}
+                                            >
+                                              {PAYMENT_TYPE_LABELS[type]?.[locale] || type}
+                                            </span>
+                                          ))
+                                        ) : (
+                                          <span
+                                            className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-100 text-slate-500'}`}
+                                          >
+                                            {t.allChannels}
+                                          </span>
+                                        )}
+                                        {inst.todayAmount !== undefined && inst.todayAmount > 0 && (
+                                          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            {t.todayAmount}: ¥{inst.todayAmount}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => openEditInstance(inst)}
+                                          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${isDark ? 'text-indigo-400 hover:bg-indigo-500/15' : 'text-indigo-600 hover:bg-indigo-50'}`}
+                                        >
+                                          {locale === 'en' ? 'Edit' : '编辑'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteInstance(inst.id)}
+                                          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${isDark ? 'text-red-400 hover:bg-red-500/15' : 'text-red-600 hover:bg-red-50'}`}
+                                        >
+                                          {locale === 'en' ? 'Delete' : '删除'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </>
             ))}
         </div>
@@ -891,119 +1027,6 @@ function PaymentConfigContent() {
           </button>
         </div>
       </div>
-
-      {/* ══ 服务商管理 ══ */}
-      {rcOverrideEnv && enabledProviderKeys.length > 0 && (
-        <div className={cardCls}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h2 className={`text-base font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                {t.providerManagement}
-              </h2>
-              <div className="flex items-center gap-2">
-                <label className={`text-xs whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {t.loadBalanceStrategy}
-                </label>
-                <select
-                  value={rcLoadBalanceStrategy}
-                  onChange={(e) => setRcLoadBalanceStrategy(e.target.value)}
-                  className={[inputCls, '!w-auto !py-1.5 !text-xs'].join(' ')}
-                >
-                  <option value="round-robin">{t.strategyRoundRobin}</option>
-                  <option value="least-amount">{t.strategyLeastAmount}</option>
-                </select>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={openCreateInstance}
-              className="inline-flex items-center rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-600"
-            >
-              + {t.addInstance}
-            </button>
-          </div>
-
-          {/* Per provider type groups */}
-          <div className="space-y-4">
-            {enabledProviderKeys.map((pk) => {
-              const providerInstances = instances.filter((i) => i.providerKey === pk);
-              return (
-                <div key={pk} className={subCardCls}>
-                  <h3 className={`text-sm font-semibold mb-2 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    {PROVIDER_LABELS[pk]?.[locale] || pk}
-                  </h3>
-                  {providerInstances.length === 0 ? (
-                    <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {locale === 'en' ? 'No instances' : '暂无实例'}
-                    </p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {providerInstances.map((inst) => {
-                        const instTypes = inst.supportedTypes ? inst.supportedTypes.split(',').filter(Boolean) : [];
-                        return (
-                          <div
-                            key={inst.id}
-                            className={[
-                              'flex items-center justify-between rounded-lg border px-3 py-2',
-                              isDark ? 'border-slate-500/50 bg-slate-800/60' : 'border-slate-200 bg-white',
-                            ].join(' ')}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-                              <Toggle value={inst.enabled} onChange={() => toggleInstanceEnabled(inst)} />
-                              <span
-                                className={`text-sm font-medium ${inst.enabled ? (isDark ? 'text-slate-100' : 'text-slate-900') : isDark ? 'text-slate-500' : 'text-slate-400'}`}
-                              >
-                                {inst.name}
-                              </span>
-                              {instTypes.length > 0 ? (
-                                instTypes.map((type) => (
-                                  <span
-                                    key={type}
-                                    className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}
-                                  >
-                                    {PAYMENT_TYPE_LABELS[type]?.[locale] || type}
-                                  </span>
-                                ))
-                              ) : (
-                                <span
-                                  className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-100 text-slate-500'}`}
-                                >
-                                  {t.allChannels}
-                                </span>
-                              )}
-                              {inst.todayAmount !== undefined && inst.todayAmount > 0 && (
-                                <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                  {t.todayAmount}: ¥{inst.todayAmount}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => openEditInstance(inst)}
-                                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${isDark ? 'text-indigo-400 hover:bg-indigo-500/15' : 'text-indigo-600 hover:bg-indigo-50'}`}
-                              >
-                                {locale === 'en' ? 'Edit' : '编辑'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteInstance(inst.id)}
-                                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${isDark ? 'text-red-400 hover:bg-red-500/15' : 'text-red-600 hover:bg-red-50'}`}
-                              >
-                                {locale === 'en' ? 'Delete' : '删除'}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ══ Instance Modal ══ */}
       {instanceModalOpen && (
@@ -1039,6 +1062,7 @@ function PaymentConfigContent() {
                         providerKey: e.target.value,
                         config: {},
                         supportedTypes: PROVIDER_SUPPORTED_TYPES[e.target.value] || [],
+                        limits: {},
                       })
                     }
                     className={inputCls}
@@ -1156,6 +1180,95 @@ function PaymentConfigContent() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* ── 限额配置 (collapsible) ── */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setLimitsOpen(!limitsOpen)}
+                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${isDark ? 'text-slate-300 hover:text-slate-100' : 'text-slate-700 hover:text-slate-900'}`}
+                >
+                  <span
+                    className="inline-block transition-transform text-[10px]"
+                    style={{ transform: limitsOpen ? 'rotate(90deg)' : 'none' }}
+                  >
+                    ▶
+                  </span>
+                  {locale === 'en' ? 'Limits' : '限额配置'}
+                  {Object.values(instanceForm.limits).some((l) => l.dailyLimit || l.singleLimit) && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-50 text-amber-700'}`}
+                    >
+                      {locale === 'en' ? 'configured' : '已配置'}
+                    </span>
+                  )}
+                </button>
+                {limitsOpen && (
+                  <div className="mt-2 space-y-3">
+                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {locale === 'en'
+                        ? 'Set per-channel daily and single transaction limits. Leave empty for unlimited.'
+                        : '设置每个渠道的日限额和单笔限额，留空为不限。'}
+                    </p>
+                    {(PROVIDER_SUPPORTED_TYPES[instanceForm.providerKey] || []).map((type) => (
+                      <div
+                        key={type}
+                        className={`rounded-lg border p-3 ${isDark ? 'border-slate-600 bg-slate-700/30' : 'border-slate-200 bg-slate-50/50'}`}
+                      >
+                        <div className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                          {PAYMENT_TYPE_LABELS[type]?.[locale] || type}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-xs mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {locale === 'en' ? 'Daily Limit' : '日限额'}
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={instanceForm.limits[type]?.dailyLimit ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? Number(e.target.value) : undefined;
+                                setInstanceForm((p) => ({
+                                  ...p,
+                                  limits: {
+                                    ...p.limits,
+                                    [type]: { ...p.limits[type], dailyLimit: val },
+                                  },
+                                }));
+                              }}
+                              className={inputCls}
+                              placeholder={locale === 'en' ? 'Unlimited' : '不限'}
+                            />
+                          </div>
+                          <div>
+                            <label className={`block text-xs mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {locale === 'en' ? 'Single Limit' : '单笔限额'}
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={instanceForm.limits[type]?.singleLimit ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value ? Number(e.target.value) : undefined;
+                                setInstanceForm((p) => ({
+                                  ...p,
+                                  limits: {
+                                    ...p.limits,
+                                    [type]: { ...p.limits[type], singleLimit: val },
+                                  },
+                                }));
+                              }}
+                              className={inputCls}
+                              placeholder={locale === 'en' ? 'Unlimited' : '不限'}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

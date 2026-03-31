@@ -7,6 +7,70 @@ const rrCounters = new Map<string, number>();
 
 export type LoadBalanceStrategy = 'round-robin' | 'least-amount';
 
+interface InstanceLimits {
+  [paymentType: string]: {
+    dailyLimit?: number;
+    singleLimit?: number;
+  };
+}
+
+function parseInstanceLimits(raw: string | null): InstanceLimits | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as InstanceLimits;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Filter instances by their per-channel daily limit.
+ * Instances without limits or with dailyLimit=0 are always eligible.
+ */
+async function filterByDailyLimits(
+  instances: { id: string; limits: string | null }[],
+  paymentType: string,
+): Promise<Set<string>> {
+  const todayStart = getBizDayStartUTC();
+  const needCheck: string[] = [];
+
+  for (const inst of instances) {
+    const limits = parseInstanceLimits(inst.limits);
+    const channelLimit = limits?.[paymentType]?.dailyLimit;
+    if (channelLimit && channelLimit > 0) {
+      needCheck.push(inst.id);
+    }
+  }
+
+  if (needCheck.length === 0) return new Set(); // no blocked instances
+
+  const amounts = await prisma.order.groupBy({
+    by: ['providerInstanceId'],
+    where: {
+      providerInstanceId: { in: needCheck },
+      status: { in: ['PAID', 'RECHARGING', 'COMPLETED'] },
+      paidAt: { gte: todayStart },
+    },
+    _sum: { payAmount: true },
+  });
+
+  const usageMap = new Map(amounts.map((a) => [a.providerInstanceId, Number(a._sum.payAmount ?? 0)]));
+  const blocked = new Set<string>();
+
+  for (const inst of instances) {
+    const limits = parseInstanceLimits(inst.limits);
+    const channelLimit = limits?.[paymentType]?.dailyLimit;
+    if (channelLimit && channelLimit > 0) {
+      const used = usageMap.get(inst.id) ?? 0;
+      if (used >= channelLimit) {
+        blocked.add(inst.id);
+      }
+    }
+  }
+
+  return blocked;
+}
+
 /**
  * Select an instance for a given provider key based on the configured strategy.
  * Optionally filter by paymentType (e.g. 'alipay', 'wxpay').
@@ -23,7 +87,7 @@ export async function selectInstance(
   });
 
   // Filter by supportedTypes if paymentType is specified
-  const instances = paymentType
+  let instances = paymentType
     ? allInstances.filter((inst) => {
         if (!inst.supportedTypes) return true; // empty = supports all
         const types = inst.supportedTypes
@@ -33,6 +97,14 @@ export async function selectInstance(
         return types.length === 0 || types.includes(paymentType);
       })
     : allInstances;
+
+  // Filter by per-instance daily limits
+  if (paymentType && instances.length > 0) {
+    const blocked = await filterByDailyLimits(instances, paymentType);
+    if (blocked.size > 0) {
+      instances = instances.filter((inst) => !blocked.has(inst.id));
+    }
+  }
 
   if (instances.length === 0) return null;
 

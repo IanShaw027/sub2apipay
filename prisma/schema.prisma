@@ -150,6 +150,7 @@ model PaymentProviderInstance {
   supportedTypes String   @default("") @map("supported_types") // comma-separated: alipay,wxpay,stripe
   enabled        Boolean  @default(true)
   sortOrder      Int      @default(0) @map("sort_order")
+  limits         String?  @db.Text // JSON per-channel limits: { "alipay": { "dailyLimit": 10000, "singleLimit": 1000 } }
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
