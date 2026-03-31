@@ -522,12 +522,61 @@ export async function cancelOrder(orderId: string, userId: number, locale: Local
             : unit === 'day'
               ? '天'
               : '小时';
+
+      // 计算可再次取消的时间
+      let retryAfter: Date;
+      if (windowMode === 'fixed') {
+        // 固定窗口：下一个时间边界
+        const now = new Date();
+        if (unit === 'day') {
+          retryAfter = new Date(now);
+          retryAfter.setHours(0, 0, 0, 0);
+          retryAfter.setDate(retryAfter.getDate() + 1);
+        } else if (unit === 'minute') {
+          retryAfter = new Date(now);
+          retryAfter.setSeconds(0, 0);
+          retryAfter.setMinutes(retryAfter.getMinutes() + 1);
+        } else {
+          retryAfter = new Date(now);
+          retryAfter.setMinutes(0, 0, 0);
+          retryAfter.setHours(retryAfter.getHours() + 1);
+        }
+      } else {
+        // 滚动窗口：找到窗口内最早的那条取消记录，等它滑出窗口
+        const unitMs = unit === 'minute' ? 60_000 : unit === 'day' ? 86_400_000 : 3_600_000;
+        const earliest = await prisma.auditLog.findFirst({
+          where: {
+            action: 'ORDER_CANCELLED',
+            operator: `user:${userId}`,
+            createdAt: { gte: windowStart },
+          },
+          orderBy: { createdAt: 'asc' },
+          select: { createdAt: true },
+        });
+        retryAfter = earliest
+          ? new Date(earliest.createdAt.getTime() + windowSize * unitMs)
+          : new Date(Date.now() + windowSize * unitMs);
+      }
+
+      // 格式化剩余等待时间
+      const waitMs = retryAfter.getTime() - Date.now();
+      const waitMin = Math.ceil(waitMs / 60_000);
+      let waitLabel: string;
+      if (waitMin < 1) {
+        waitLabel = locale === 'en' ? 'less than 1 minute' : '不到 1 分钟';
+      } else if (waitMin < 60) {
+        waitLabel = locale === 'en' ? `${waitMin} minute(s)` : `${waitMin} 分钟`;
+      } else {
+        const waitHr = Math.ceil(waitMin / 60);
+        waitLabel = locale === 'en' ? `${waitHr} hour(s)` : `${waitHr} 小时`;
+      }
+
       throw new OrderError(
         'CANCEL_RATE_LIMITED',
         message(
           locale,
-          `取消订单过于频繁，${windowSize} ${unitLabel}内最多可取消 ${maxCount} 次`,
-          `Too many cancellations. Maximum ${maxCount} cancellations per ${windowSize} ${unitLabel}`,
+          `取消订单过于频繁，${windowSize} ${unitLabel}内最多可取消 ${maxCount} 次。预计 ${waitLabel}后可继续取消`,
+          `Too many cancellations (max ${maxCount} per ${windowSize} ${unitLabel}). You can cancel again in ${waitLabel}`,
         ),
         429,
       );

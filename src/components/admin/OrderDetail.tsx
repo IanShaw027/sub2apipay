@@ -40,6 +40,10 @@ interface OrderDetailProps {
     paymentSuccess?: boolean;
     rechargeSuccess?: boolean;
     rechargeStatus?: string;
+    orderType?: string;
+    planId?: string | null;
+    subscriptionGroupId?: number | null;
+    subscriptionDays?: number | null;
     auditLogs: AuditLog[];
   };
   onClose: () => void;
@@ -85,6 +89,10 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
           refundReason: 'Refund Reason',
           refundAt: 'Refunded At',
           forceRefund: 'Force Refund',
+          orderType: 'Order Type',
+          planId: 'Plan ID',
+          subscriptionGroupId: 'Subscription Group ID',
+          subscriptionDays: 'Subscription Days',
         }
       : {
           title: '订单详情',
@@ -120,6 +128,10 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
           refundReason: '退款原因',
           refundAt: '退款时间',
           forceRefund: '强制退款',
+          orderType: '订单类型',
+          planId: '套餐ID',
+          subscriptionGroupId: '订阅分组ID',
+          subscriptionDays: '订阅天数',
         };
 
   useEffect(() => {
@@ -139,6 +151,17 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
     { label: text.email, value: order.userEmail || '-' },
     { label: text.amount, value: `${currency}${order.amount.toFixed(2)}` },
     { label: text.status, value: order.status },
+    {
+      label: text.orderType,
+      value:
+        order.orderType === 'subscription'
+          ? locale === 'en'
+            ? 'Subscription'
+            : '订阅'
+          : locale === 'en'
+            ? 'Balance Recharge'
+            : '余额充值',
+    },
     { label: text.paymentSuccess, value: order.paymentSuccess ? text.yes : text.no },
     { label: text.rechargeSuccess, value: order.rechargeSuccess ? text.yes : text.no },
     { label: text.rechargeStatus, value: order.rechargeStatus || '-' },
@@ -156,6 +179,17 @@ export default function OrderDetail({ order, onClose, dark, locale = 'zh' }: Ord
     { label: text.failedAt, value: order.failedAt ? formatCreatedAt(order.failedAt, locale) : '-' },
     { label: text.failedReason, value: order.failedReason || '-' },
   ];
+
+  if (order.orderType === 'subscription') {
+    fields.push(
+      { label: text.planId, value: order.planId || '-' },
+      {
+        label: text.subscriptionGroupId,
+        value: order.subscriptionGroupId != null ? String(order.subscriptionGroupId) : '-',
+      },
+      { label: text.subscriptionDays, value: order.subscriptionDays != null ? String(order.subscriptionDays) : '-' },
+    );
+  }
 
   if (order.refundAmount) {
     fields.push(

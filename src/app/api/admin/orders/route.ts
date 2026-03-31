@@ -10,12 +10,14 @@ export async function GET(request: NextRequest) {
   const page = Math.max(1, Number(searchParams.get('page') || '1'));
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get('page_size') || '20')));
   const status = searchParams.get('status');
+  const orderType = searchParams.get('orderType');
   const userId = searchParams.get('user_id');
   const dateFrom = searchParams.get('date_from');
   const dateTo = searchParams.get('date_to');
 
   const where: Prisma.OrderWhereInput = {};
   if (status && status in OrderStatus) where.status = status as OrderStatus;
+  if (orderType && (orderType === 'balance' || orderType === 'subscription')) where.orderType = orderType;
 
   // userId 校验：忽略无效值（NaN）
   if (userId) {
@@ -71,6 +73,10 @@ export async function GET(request: NextRequest) {
         failedReason: true,
         expiresAt: true,
         srcHost: true,
+        orderType: true,
+        planId: true,
+        subscriptionGroupId: true,
+        subscriptionDays: true,
       },
     }),
     prisma.order.count({ where }),

@@ -23,6 +23,7 @@ interface AdminOrder {
   failedReason: string | null;
   expiresAt: string;
   srcHost: string | null;
+  orderType?: string;
 }
 
 interface AdminOrderDetail extends AdminOrder {
@@ -40,6 +41,10 @@ interface AdminOrderDetail extends AdminOrder {
   paymentSuccess?: boolean;
   rechargeSuccess?: boolean;
   rechargeStatus?: string;
+  orderType?: string;
+  planId?: string | null;
+  subscriptionGroupId?: number | null;
+  subscriptionDays?: number | null;
   auditLogs: { id: string; action: string; detail: string | null; operator: string | null; createdAt: string }[];
 }
 
@@ -70,8 +75,16 @@ function AdminContent() {
           title: 'Order Management',
           subtitle: 'View and manage all recharge orders',
           dashboard: 'Dashboard',
+          navPaymentConfig: 'Payment Config',
+          navChannels: 'Channels',
+          navSubscriptions: 'Subscriptions',
           refresh: 'Refresh',
           loading: 'Loading...',
+          orderTypes: {
+            '': 'All Types',
+            balance: 'Balance',
+            subscription: 'Subscription',
+          },
           statuses: {
             '': 'All',
             PENDING: 'Pending',
@@ -100,8 +113,16 @@ function AdminContent() {
           title: '订单管理',
           subtitle: '查看和管理所有充值订单',
           dashboard: '数据概览',
+          navPaymentConfig: '支付配置',
+          navChannels: '渠道管理',
+          navSubscriptions: '订阅管理',
           refresh: '刷新',
           loading: '加载中...',
+          orderTypes: {
+            '': '全部类型',
+            balance: '充值',
+            subscription: '订阅',
+          },
           statuses: {
             '': '全部',
             PENDING: '待支付',
@@ -121,6 +142,7 @@ function AdminContent() {
   const [pageSize, setPageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [orderTypeFilter, setOrderTypeFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -132,6 +154,7 @@ function AdminContent() {
     try {
       const params = new URLSearchParams({ token, page: String(page), page_size: String(pageSize) });
       if (statusFilter) params.set('status', statusFilter);
+      if (orderTypeFilter) params.set('orderType', orderTypeFilter);
 
       const res = await fetch(`/api/admin/orders?${params}`);
       if (!res.ok) {
@@ -151,7 +174,7 @@ function AdminContent() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, pageSize, statusFilter]);
+  }, [token, page, pageSize, statusFilter, orderTypeFilter]);
 
   useEffect(() => {
     fetchOrders();
@@ -216,6 +239,8 @@ function AdminContent() {
 
   const statuses = ['', 'PENDING', 'PAID', 'RECHARGING', 'COMPLETED', 'EXPIRED', 'CANCELLED', 'FAILED', 'REFUNDED'];
   const statusLabels: Record<string, string> = text.statuses;
+  const orderTypes = ['', 'balance', 'subscription'];
+  const orderTypeLabels: Record<string, string> = text.orderTypes;
 
   const navParams = new URLSearchParams();
   if (token) navParams.set('token', token);
@@ -242,6 +267,15 @@ function AdminContent() {
         <>
           <a href={`/admin/dashboard?${navParams}`} className={btnBase}>
             {text.dashboard}
+          </a>
+          <a href={`/admin/payment-config?${navParams}`} className={btnBase}>
+            {text.navPaymentConfig}
+          </a>
+          <a href={`/admin/channels?${navParams}`} className={btnBase}>
+            {text.navChannels}
+          </a>
+          <a href={`/admin/subscriptions?${navParams}`} className={btnBase}>
+            {text.navSubscriptions}
           </a>
           <button type="button" onClick={fetchOrders} className={btnBase}>
             {text.refresh}
@@ -281,6 +315,28 @@ function AdminContent() {
             ].join(' ')}
           >
             {statusLabels[s]}
+          </button>
+        ))}
+        <span className={`mx-1 self-center text-sm ${isDark ? 'text-slate-600' : 'text-gray-300'}`}>|</span>
+        {orderTypes.map((t) => (
+          <button
+            key={`type-${t}`}
+            onClick={() => {
+              setOrderTypeFilter(t);
+              setPage(1);
+            }}
+            className={[
+              'rounded-full px-3 py-1 text-sm transition-colors',
+              orderTypeFilter === t
+                ? isDark
+                  ? 'bg-purple-500/30 text-purple-200 ring-1 ring-purple-400/40'
+                  : 'bg-purple-600 text-white'
+                : isDark
+                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+            ].join(' ')}
+          >
+            {orderTypeLabels[t]}
           </button>
         ))}
       </div>

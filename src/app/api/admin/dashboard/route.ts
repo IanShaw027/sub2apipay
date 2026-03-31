@@ -24,27 +24,54 @@ export async function GET(request: NextRequest) {
     OrderStatus.REFUND_FAILED,
   ];
 
-  const [todayStats, totalStats, todayOrders, totalOrders, dailyRaw, leaderboardRaw, paymentMethodStats] =
-    await Promise.all([
-      // Today paid aggregate
-      prisma.order.aggregate({
-        where: { status: { in: paidStatuses }, paidAt: { gte: todayStart } },
-        _sum: { amount: true },
-        _count: { _all: true },
-      }),
-      // Total paid aggregate
-      prisma.order.aggregate({
-        where: { status: { in: paidStatuses } },
-        _sum: { amount: true },
-        _count: { _all: true },
-      }),
-      // Today total orders
-      prisma.order.count({ where: { createdAt: { gte: todayStart } } }),
-      // Total orders
-      prisma.order.count(),
-      // Daily series: use AT TIME ZONE to group by business timezone date
-      // Prisma.raw() inlines the timezone name to avoid parameterization mismatch between SELECT and GROUP BY
-      prisma.$queryRaw<{ date: string; amount: string; count: bigint }[]>`
+  const [
+    todayStats,
+    totalStats,
+    todayOrders,
+    totalOrders,
+    subTodayStats,
+    subTotalStats,
+    subTodayOrders,
+    subTotalOrders,
+    dailyRaw,
+    leaderboardRaw,
+    paymentMethodStats,
+  ] = await Promise.all([
+    // Today paid aggregate
+    prisma.order.aggregate({
+      where: { status: { in: paidStatuses }, paidAt: { gte: todayStart } },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+    // Total paid aggregate
+    prisma.order.aggregate({
+      where: { status: { in: paidStatuses } },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+    // Today total orders
+    prisma.order.count({ where: { createdAt: { gte: todayStart } } }),
+    // Total orders
+    prisma.order.count(),
+    // Subscription: today paid aggregate
+    prisma.order.aggregate({
+      where: { status: { in: paidStatuses }, paidAt: { gte: todayStart }, orderType: 'subscription' },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+    // Subscription: total paid aggregate
+    prisma.order.aggregate({
+      where: { status: { in: paidStatuses }, orderType: 'subscription' },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+    // Subscription: today total orders
+    prisma.order.count({ where: { createdAt: { gte: todayStart }, orderType: 'subscription' } }),
+    // Subscription: total orders
+    prisma.order.count({ where: { orderType: 'subscription' } }),
+    // Daily series: use AT TIME ZONE to group by business timezone date
+    // Prisma.raw() inlines the timezone name to avoid parameterization mismatch between SELECT and GROUP BY
+    prisma.$queryRaw<{ date: string; amount: string; count: bigint }[]>`
         SELECT (paid_at AT TIME ZONE 'UTC' AT TIME ZONE ${Prisma.raw(`'${BIZ_TZ_NAME}'`)})::date::text as date,
                SUM(amount)::text as amount, COUNT(*) as count
         FROM orders
@@ -53,16 +80,16 @@ export async function GET(request: NextRequest) {
         GROUP BY (paid_at AT TIME ZONE 'UTC' AT TIME ZONE ${Prisma.raw(`'${BIZ_TZ_NAME}'`)})::date
         ORDER BY date
       `,
-      // Leaderboard: GROUP BY user_id only, MAX() for name/email
-      prisma.$queryRaw<
-        {
-          user_id: number;
-          user_name: string | null;
-          user_email: string | null;
-          total_amount: string;
-          order_count: bigint;
-        }[]
-      >`
+    // Leaderboard: GROUP BY user_id only, MAX() for name/email
+    prisma.$queryRaw<
+      {
+        user_id: number;
+        user_name: string | null;
+        user_email: string | null;
+        total_amount: string;
+        order_count: bigint;
+      }[]
+    >`
         SELECT user_id, MAX(user_name) as user_name, MAX(user_email) as user_email,
                SUM(amount)::text as total_amount, COUNT(*) as order_count
         FROM orders
@@ -72,14 +99,14 @@ export async function GET(request: NextRequest) {
         ORDER BY SUM(amount) DESC
         LIMIT 10
       `,
-      // Payment method distribution (within time range)
-      prisma.order.groupBy({
-        by: ['paymentType'],
-        where: { status: { in: paidStatuses }, paidAt: { gte: startDate } },
-        _sum: { amount: true },
-        _count: { _all: true },
-      }),
-    ]);
+    // Payment method distribution (within time range)
+    prisma.order.groupBy({
+      by: ['paymentType'],
+      where: { status: { in: paidStatuses }, paidAt: { gte: startDate } },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+  ]);
 
   // Fill missing dates for continuous line chart
   const dailyMap = new Map<string, { amount: number; count: number }>();
@@ -112,6 +139,12 @@ export async function GET(request: NextRequest) {
   const successRate = totalOrders > 0 ? (totalPaidCount / totalOrders) * 100 : 0;
   const avgAmount = totalPaidCount > 0 ? totalPaidAmount / totalPaidCount : 0;
 
+  // Subscription summary
+  const subTodayPaidAmount = Number(subTodayStats._sum?.amount || 0);
+  const subTodayPaidCount = subTodayStats._count._all;
+  const subTotalPaidAmount = Number(subTotalStats._sum?.amount || 0);
+  const subTotalPaidCount = subTotalStats._count._all;
+
   // Payment method total for percentage calc
   const paymentTotal = paymentMethodStats.reduce((sum, m) => sum + Number(m._sum?.amount || 0), 0);
 
@@ -119,6 +152,8 @@ export async function GET(request: NextRequest) {
     summary: {
       today: { amount: todayPaidAmount, orderCount: todayOrders, paidCount: todayPaidCount },
       total: { amount: totalPaidAmount, orderCount: totalOrders, paidCount: totalPaidCount },
+      subscriptionToday: { amount: subTodayPaidAmount, orderCount: subTodayOrders, paidCount: subTodayPaidCount },
+      subscriptionTotal: { amount: subTotalPaidAmount, orderCount: subTotalOrders, paidCount: subTotalPaidCount },
       successRate: Math.round(successRate * 10) / 10,
       avgAmount: Math.round(avgAmount * 100) / 100,
     },

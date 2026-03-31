@@ -5,6 +5,8 @@ import type { Locale } from '@/lib/locale';
 interface Summary {
   today: { amount: number; orderCount: number; paidCount: number };
   total: { amount: number; orderCount: number; paidCount: number };
+  subscriptionToday?: { amount: number; orderCount: number; paidCount: number };
+  subscriptionTotal?: { amount: number; orderCount: number; paidCount: number };
   successRate: number;
   avgAmount: number;
 }
@@ -36,6 +38,30 @@ export default function DashboardStats({ summary, dark, locale = 'zh' }: Dashboa
     { label: locale === 'en' ? 'Success Rate' : '成功率', value: `${summary.successRate}%` },
     { label: locale === 'en' ? 'Average Amount' : '平均充值', value: `${currency}${summary.avgAmount.toFixed(2)}` },
   ];
+
+  // Conditionally add subscription cards if subscription data exists
+  const hasSub =
+    summary.subscriptionToday &&
+    summary.subscriptionTotal &&
+    (summary.subscriptionToday.amount > 0 ||
+      summary.subscriptionTotal.amount > 0 ||
+      summary.subscriptionToday.orderCount > 0 ||
+      summary.subscriptionTotal.orderCount > 0);
+
+  if (hasSub) {
+    cards.push(
+      {
+        label: locale === 'en' ? 'Subscription Revenue Today' : '今日订阅收入',
+        value: `${currency}${summary.subscriptionToday!.amount.toLocaleString()}`,
+        accent: true,
+      },
+      {
+        label: locale === 'en' ? 'Total Subscription Revenue' : '订阅总收入',
+        value: `${currency}${summary.subscriptionTotal!.amount.toLocaleString()}`,
+        accent: true,
+      },
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

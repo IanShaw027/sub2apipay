@@ -18,6 +18,7 @@ interface Order {
   failedReason: string | null;
   expiresAt: string;
   srcHost: string | null;
+  orderType?: string;
   rechargeRetryable?: boolean;
 }
 
@@ -40,6 +41,7 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail, da
           email: 'Email',
           notes: 'Notes',
           amount: 'Amount',
+          type: 'Type',
           status: 'Status',
           paymentMethod: 'Payment',
           source: 'Source',
@@ -55,6 +57,7 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail, da
           email: '邮箱',
           notes: '备注',
           amount: '金额',
+          type: '类型',
           status: '状态',
           paymentMethod: '支付方式',
           source: '来源',
@@ -78,6 +81,7 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail, da
             <th className={thCls}>{text.email}</th>
             <th className={thCls}>{text.notes}</th>
             <th className={thCls}>{text.amount}</th>
+            <th className={thCls}>{text.type}</th>
             <th className={thCls}>{text.status}</th>
             <th className={thCls}>{text.paymentMethod}</th>
             <th className={thCls}>{text.source}</th>
@@ -138,6 +142,27 @@ export default function OrderTable({ orders, onRetry, onCancel, onViewDetail, da
                 >
                   {currency}
                   {order.amount.toFixed(2)}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-sm">
+                  <span
+                    className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                      order.orderType === 'subscription'
+                        ? dark
+                          ? 'bg-purple-500/20 text-purple-300'
+                          : 'bg-purple-100 text-purple-800'
+                        : dark
+                          ? 'bg-blue-500/20 text-blue-300'
+                          : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
+                    {order.orderType === 'subscription'
+                      ? locale === 'en'
+                        ? 'Subscription'
+                        : '订阅'
+                      : locale === 'en'
+                        ? 'Recharge'
+                        : '充值'}
+                  </span>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-sm">
                   <span

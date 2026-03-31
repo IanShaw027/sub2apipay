@@ -55,9 +55,12 @@ function getTexts(locale: Locale) {
         missingToken: 'Missing admin token',
         missingTokenHint: 'Please access the admin page from the Sub2API platform.',
         invalidToken: 'Invalid admin token',
-        title: 'Recharge / Channels',
-        subtitle: 'Recharge settings and channel management',
+        title: 'Channel Management',
+        subtitle: 'Configure and manage subscription channels',
         orders: 'Orders',
+        navDashboard: 'Dashboard',
+        navPaymentConfig: 'Payment Config',
+        navSubscriptions: 'Subscriptions',
         refresh: 'Refresh',
         loading: 'Loading...',
         noChannels: 'No channels found',
@@ -103,38 +106,18 @@ function getTexts(locale: Locale) {
         syncImportSuccess: (n: number) => `Successfully imported ${n} channel(s)`,
         yes: 'Yes',
         no: 'No',
-        rechargeConfig: 'Recharge Configuration',
-        productNamePrefix: 'Product Name Prefix',
-        productNameSuffix: 'Product Name Suffix',
-        preview: 'Preview',
-        enableBalanceRecharge: 'Enable Balance Recharge',
-        saveConfig: 'Save',
-        savingConfig: 'Saving...',
-        configSaved: 'Configuration saved',
         configSaveFailed: 'Failed to save configuration',
-        cancelRateLimit: 'Order Cancel Rate Limit',
-        cancelRateLimitWindow: 'Window',
-        cancelRateLimitUnit: 'Unit',
-        cancelRateLimitMax: 'Max Cancellations',
-        cancelRateLimitUnitMinute: 'Minutes',
-        cancelRateLimitUnitHour: 'Hours',
-        cancelRateLimitUnitDay: 'Days',
-        maxPendingOrders: 'Max Pending Orders',
-        cancelRateLimitWindowMode: 'Window Mode',
-        cancelRateLimitWindowModeRolling: 'Rolling',
-        cancelRateLimitWindowModeFixed: 'Fixed',
-        cancelRateLimitHint: (w: string, u: string, m: string, mode: string) =>
-          `Within ${w} ${u === 'minute' ? 'minute(s)' : u === 'day' ? 'day(s)' : 'hour(s)'}, max ${m} cancellation(s) (${mode === 'fixed' ? 'fixed window' : 'rolling window'})`,
-        tabRechargeConfig: 'Recharge Config',
-        tabChannelManagement: 'Channel Management',
       }
     : {
         missingToken: '缺少管理员凭证',
         missingTokenHint: '请从 Sub2API 平台正确访问管理页面',
         invalidToken: '管理员凭证无效',
-        title: '充值/渠道',
-        subtitle: '充值配置和渠道管理',
+        title: '渠道管理',
+        subtitle: '配置和管理订阅渠道',
         orders: '订单管理',
+        navDashboard: '数据概览',
+        navPaymentConfig: '支付配置',
+        navSubscriptions: '订阅管理',
         refresh: '刷新',
         loading: '加载中...',
         noChannels: '暂无渠道',
@@ -180,30 +163,7 @@ function getTexts(locale: Locale) {
         syncImportSuccess: (n: number) => `成功导入 ${n} 个渠道`,
         yes: '是',
         no: '否',
-        rechargeConfig: '充值配置',
-        productNamePrefix: '商品名前缀',
-        productNameSuffix: '商品名后缀',
-        preview: '预览',
-        enableBalanceRecharge: '启用余额充值',
-        saveConfig: '保存',
-        savingConfig: '保存中...',
-        configSaved: '配置已保存',
         configSaveFailed: '保存配置失败',
-        cancelRateLimit: '订单取消频率限制',
-        cancelRateLimitWindow: '窗口',
-        cancelRateLimitUnit: '周期单位',
-        cancelRateLimitMax: '最大取消次数',
-        cancelRateLimitUnitMinute: '分钟',
-        cancelRateLimitUnitHour: '小时',
-        cancelRateLimitUnitDay: '天',
-        maxPendingOrders: '最多可存在支付中订单',
-        cancelRateLimitWindowMode: '窗口模式',
-        cancelRateLimitWindowModeRolling: '滚动',
-        cancelRateLimitWindowModeFixed: '固定',
-        cancelRateLimitHint: (w: string, u: string, m: string, mode: string) =>
-          `${w} ${u === 'minute' ? '分钟' : u === 'day' ? '天' : '小时'}内最多可取消 ${m} 次（${mode === 'fixed' ? '固定窗口' : '滚动窗口'}）`,
-        tabRechargeConfig: '充值配置',
-        tabChannelManagement: '渠道管理',
       };
 }
 
@@ -259,26 +219,11 @@ function ChannelsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'recharge' | 'channels'>('recharge');
-
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [form, setForm] = useState<ChannelFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
-
-  // Recharge config state (R5, R6)
-  const [rcPrefix, setRcPrefix] = useState('');
-  const [rcSuffix, setRcSuffix] = useState('');
-  const [rcBalanceEnabled, setRcBalanceEnabled] = useState(true);
-  const [rcCancelRateLimitEnabled, setRcCancelRateLimitEnabled] = useState(false);
-  const [rcCancelRateLimitWindow, setRcCancelRateLimitWindow] = useState('1');
-  const [rcCancelRateLimitUnit, setRcCancelRateLimitUnit] = useState('day');
-  const [rcCancelRateLimitMax, setRcCancelRateLimitMax] = useState('10');
-  const [rcCancelRateLimitWindowMode, setRcCancelRateLimitWindowMode] = useState('rolling');
-  const [rcMaxPendingOrders, setRcMaxPendingOrders] = useState('3');
-  const [rcSaving, setRcSaving] = useState(false);
 
   // Sync modal state
   const [syncModalOpen, setSyncModalOpen] = useState(false);
@@ -310,104 +255,9 @@ function ChannelsContent() {
     }
   }, [token]);
 
-  // Fetch recharge config
-  const fetchRechargeConfig = useCallback(async () => {
-    if (!token) return;
-    try {
-      const res = await fetch(`/api/admin/config?token=${encodeURIComponent(token)}`);
-      if (res.ok) {
-        const data = await res.json();
-        const configs: { key: string; value: string }[] = data.configs ?? [];
-        for (const c of configs) {
-          if (c.key === 'PRODUCT_NAME_PREFIX') setRcPrefix(c.value);
-          if (c.key === 'PRODUCT_NAME_SUFFIX') setRcSuffix(c.value);
-          if (c.key === 'BALANCE_PAYMENT_DISABLED') setRcBalanceEnabled(c.value !== 'true');
-          if (c.key === 'CANCEL_RATE_LIMIT_ENABLED') setRcCancelRateLimitEnabled(c.value === 'true');
-          if (c.key === 'CANCEL_RATE_LIMIT_WINDOW') setRcCancelRateLimitWindow(c.value || '1');
-          if (c.key === 'CANCEL_RATE_LIMIT_UNIT') setRcCancelRateLimitUnit(c.value || 'day');
-          if (c.key === 'CANCEL_RATE_LIMIT_MAX') setRcCancelRateLimitMax(c.value || '10');
-          if (c.key === 'CANCEL_RATE_LIMIT_WINDOW_MODE') setRcCancelRateLimitWindowMode(c.value || 'rolling');
-          if (c.key === 'MAX_PENDING_ORDERS') setRcMaxPendingOrders(c.value || '3');
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [token]);
-
-  const saveRechargeConfig = async () => {
-    setRcSaving(true);
-    setError('');
-    try {
-      const res = await fetch('/api/admin/config', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          configs: [
-            { key: 'PRODUCT_NAME_PREFIX', value: rcPrefix.trim(), group: 'payment', label: '商品名前缀' },
-            { key: 'PRODUCT_NAME_SUFFIX', value: rcSuffix.trim(), group: 'payment', label: '商品名后缀' },
-            {
-              key: 'BALANCE_PAYMENT_DISABLED',
-              value: rcBalanceEnabled ? 'false' : 'true',
-              group: 'payment',
-              label: '余额充值禁用',
-            },
-            {
-              key: 'CANCEL_RATE_LIMIT_ENABLED',
-              value: rcCancelRateLimitEnabled ? 'true' : 'false',
-              group: 'payment',
-              label: '订单取消频率限制',
-            },
-            {
-              key: 'CANCEL_RATE_LIMIT_WINDOW',
-              value: rcCancelRateLimitWindow,
-              group: 'payment',
-              label: '频率限制窗口',
-            },
-            {
-              key: 'CANCEL_RATE_LIMIT_UNIT',
-              value: rcCancelRateLimitUnit,
-              group: 'payment',
-              label: '频率限制周期单位',
-            },
-            {
-              key: 'CANCEL_RATE_LIMIT_MAX',
-              value: rcCancelRateLimitMax,
-              group: 'payment',
-              label: '频率限制最大次数',
-            },
-            {
-              key: 'CANCEL_RATE_LIMIT_WINDOW_MODE',
-              value: rcCancelRateLimitWindowMode,
-              group: 'payment',
-              label: '频率限制窗口模式',
-            },
-            {
-              key: 'MAX_PENDING_ORDERS',
-              value: rcMaxPendingOrders,
-              group: 'payment',
-              label: '最多可存在支付中订单',
-            },
-          ],
-        }),
-      });
-      if (!res.ok) {
-        setError(t.configSaveFailed);
-      }
-    } catch {
-      setError(t.configSaveFailed);
-    } finally {
-      setRcSaving(false);
-    }
-  };
-
   useEffect(() => {
     fetchChannels();
-    fetchRechargeConfig();
-  }, [fetchChannels, fetchRechargeConfig]);
+  }, [fetchChannels]);
 
   // ── Missing token ──
 
@@ -656,9 +506,20 @@ function ChannelsContent() {
       subtitle={t.subtitle}
       locale={locale}
       actions={
-        <a href={`/admin/orders?${navParams}`} className={btnBase}>
-          {t.orders}
-        </a>
+        <>
+          <a href={`/admin/dashboard?${navParams}`} className={btnBase}>
+            {t.navDashboard}
+          </a>
+          <a href={`/admin/orders?${navParams}`} className={btnBase}>
+            {t.orders}
+          </a>
+          <a href={`/admin/payment-config?${navParams}`} className={btnBase}>
+            {t.navPaymentConfig}
+          </a>
+          <a href={`/admin/subscriptions?${navParams}`} className={btnBase}>
+            {t.navSubscriptions}
+          </a>
+        </>
       }
     >
       {/* Error banner */}
@@ -673,377 +534,168 @@ function ChannelsContent() {
         </div>
       )}
 
-      {/* Tab bar */}
-      <div
-        className={[
-          'mb-4 flex gap-0 rounded-lg border p-1',
-          isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-slate-100',
-        ].join(' ')}
-      >
-        {(['recharge', 'channels'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={[
-              'flex-1 rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
-              activeTab === tab
-                ? isDark
-                  ? 'bg-slate-700 text-slate-100 shadow-sm'
-                  : 'bg-white text-slate-900 shadow-sm'
-                : isDark
-                  ? 'text-slate-400 hover:text-slate-200'
-                  : 'text-slate-500 hover:text-slate-700',
-            ].join(' ')}
-          >
-            {tab === 'recharge' ? t.tabRechargeConfig : t.tabChannelManagement}
-          </button>
-        ))}
+      {/* Channel action buttons */}
+      <div className="mb-4 flex flex-wrap gap-2 justify-end">
+        <button type="button" onClick={fetchChannels} className={btnBase}>
+          {t.refresh}
+        </button>
+        <button
+          type="button"
+          onClick={openSyncModal}
+          className="inline-flex items-center rounded-lg border border-indigo-500 bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-600"
+        >
+          {t.syncFromSub2Api}
+        </button>
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-600"
+        >
+          {t.newChannel}
+        </button>
       </div>
 
-      {/* ── Recharge Config Tab ── */}
-      {activeTab === 'recharge' && (
-        <div
-          className={[
-            'rounded-xl border p-4',
-            isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
-          ].join(' ')}
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className={labelCls}>{t.productNamePrefix}</label>
-              <input
-                type="text"
-                value={rcPrefix}
-                onChange={(e) => setRcPrefix(e.target.value)}
-                className={inputCls}
-                placeholder="Sub2API"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>{t.productNameSuffix}</label>
-              <input
-                type="text"
-                value={rcSuffix}
-                onChange={(e) => setRcSuffix(e.target.value)}
-                className={inputCls}
-                placeholder="CNY"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>{t.preview}</label>
-              <div
-                className={[
-                  'rounded-lg border px-3 py-2 text-sm',
-                  isDark
-                    ? 'border-slate-600 bg-slate-700 text-slate-300'
-                    : 'border-slate-300 bg-slate-50 text-slate-600',
-                ].join(' ')}
+      {/* Channel table */}
+      <div
+        className={[
+          'overflow-x-auto rounded-xl border',
+          isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
+        ].join(' ')}
+      >
+        {loading ? (
+          <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.loading}</div>
+        ) : channels.length === 0 ? (
+          <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+            <p className="text-base font-medium">{t.noChannels}</p>
+            <p className="mt-1 text-sm opacity-70">{t.noChannelsHint}</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr
+                className={
+                  isDark ? 'border-b border-slate-700 text-slate-400' : 'border-b border-slate-200 text-slate-500'
+                }
               >
-                {`${rcPrefix.trim() || 'Sub2API'} 100 ${rcSuffix.trim() || 'CNY'}`.trim()}
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setRcBalanceEnabled(!rcBalanceEnabled)}
-                className={[
-                  'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                  rcBalanceEnabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300',
-                ].join(' ')}
-              >
-                <span
-                  className={[
-                    'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                    rcBalanceEnabled ? 'translate-x-4.5' : 'translate-x-0.5',
-                  ].join(' ')}
-                />
-              </button>
-              <span className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-700'].join(' ')}>
-                {t.enableBalanceRecharge}
-              </span>
-            </div>
-          </div>
-
-          {/* 最多可存在支付中订单 */}
-          <div className="mt-3">
-            <label className={labelCls}>{t.maxPendingOrders}</label>
-            <input
-              type="number"
-              min="1"
-              max="99"
-              value={rcMaxPendingOrders}
-              onChange={(e) => setRcMaxPendingOrders(e.target.value)}
-              className={[inputCls, 'w-24'].join(' ')}
-            />
-          </div>
-
-          {/* 订单取消频率限制 */}
-          <div className="mt-3">
-            <div className="flex items-center gap-3 mb-2">
-              <button
-                type="button"
-                onClick={() => setRcCancelRateLimitEnabled(!rcCancelRateLimitEnabled)}
-                className={[
-                  'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                  rcCancelRateLimitEnabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300',
-                ].join(' ')}
-              >
-                <span
-                  className={[
-                    'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                    rcCancelRateLimitEnabled ? 'translate-x-4.5' : 'translate-x-0.5',
-                  ].join(' ')}
-                />
-              </button>
-              <span className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-700'].join(' ')}>
-                {t.cancelRateLimit}
-              </span>
-            </div>
-            {rcCancelRateLimitEnabled && (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div>
-                    <label className={labelCls}>{t.cancelRateLimitWindow}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="999"
-                      value={rcCancelRateLimitWindow}
-                      onChange={(e) => setRcCancelRateLimitWindow(e.target.value)}
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>{t.cancelRateLimitUnit}</label>
-                    <select
-                      value={rcCancelRateLimitUnit}
-                      onChange={(e) => setRcCancelRateLimitUnit(e.target.value)}
-                      className={inputCls}
-                    >
-                      <option value="minute">{t.cancelRateLimitUnitMinute}</option>
-                      <option value="hour">{t.cancelRateLimitUnitHour}</option>
-                      <option value="day">{t.cancelRateLimitUnitDay}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>{t.cancelRateLimitMax}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="999"
-                      value={rcCancelRateLimitMax}
-                      onChange={(e) => setRcCancelRateLimitMax(e.target.value)}
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>{t.cancelRateLimitWindowMode}</label>
-                    <select
-                      value={rcCancelRateLimitWindowMode}
-                      onChange={(e) => setRcCancelRateLimitWindowMode(e.target.value)}
-                      className={inputCls}
-                    >
-                      <option value="rolling">{t.cancelRateLimitWindowModeRolling}</option>
-                      <option value="fixed">{t.cancelRateLimitWindowModeFixed}</option>
-                    </select>
-                  </div>
-                </div>
-                <p className={['mt-1 text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
-                  {t.cancelRateLimitHint(
-                    rcCancelRateLimitWindow,
-                    rcCancelRateLimitUnit,
-                    rcCancelRateLimitMax,
-                    rcCancelRateLimitWindowMode,
-                  )}
-                </p>
-              </>
-            )}
-          </div>
-
-          <div className="mt-3 flex justify-end">
-            <button
-              type="button"
-              onClick={saveRechargeConfig}
-              disabled={rcSaving}
-              className="inline-flex items-center rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
-            >
-              {rcSaving ? t.savingConfig : t.saveConfig}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Channels Tab ── */}
-      {activeTab === 'channels' && (
-        <>
-          <div className="mb-4 flex flex-wrap gap-2 justify-end">
-            <button type="button" onClick={fetchChannels} className={btnBase}>
-              {t.refresh}
-            </button>
-            <button
-              type="button"
-              onClick={openSyncModal}
-              className="inline-flex items-center rounded-lg border border-indigo-500 bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-600"
-            >
-              {t.syncFromSub2Api}
-            </button>
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="inline-flex items-center rounded-lg border border-emerald-500 bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-600"
-            >
-              {t.newChannel}
-            </button>
-          </div>
-
-          {/* Channel table */}
-          <div
-            className={[
-              'overflow-x-auto rounded-xl border',
-              isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
-            ].join(' ')}
-          >
-            {loading ? (
-              <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.loading}</div>
-            ) : channels.length === 0 ? (
-              <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                <p className="text-base font-medium">{t.noChannels}</p>
-                <p className="mt-1 text-sm opacity-70">{t.noChannelsHint}</p>
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
+                <th className="px-4 py-3 text-left font-medium">{t.colName}</th>
+                <th className="px-4 py-3 text-left font-medium">{t.colPlatform}</th>
+                <th className="px-4 py-3 text-left font-medium">{t.colRate}</th>
+                <th className="px-4 py-3 text-center font-medium">{t.colSub2ApiStatus}</th>
+                <th className="px-4 py-3 text-center font-medium">{t.colSortOrder}</th>
+                <th className="px-4 py-3 text-center font-medium">{t.colEnabled}</th>
+                <th className="px-4 py-3 text-right font-medium">{t.colActions}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {channels.map((channel) => {
+                return (
                   <tr
-                    className={
-                      isDark ? 'border-b border-slate-700 text-slate-400' : 'border-b border-slate-200 text-slate-500'
-                    }
+                    key={channel.id}
+                    className={[
+                      'border-b transition-colors',
+                      isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50',
+                    ].join(' ')}
                   >
-                    <th className="px-4 py-3 text-left font-medium">{t.colName}</th>
-                    <th className="px-4 py-3 text-left font-medium">{t.colPlatform}</th>
-                    <th className="px-4 py-3 text-left font-medium">{t.colRate}</th>
-                    <th className="px-4 py-3 text-center font-medium">{t.colSub2ApiStatus}</th>
-                    <th className="px-4 py-3 text-center font-medium">{t.colSortOrder}</th>
-                    <th className="px-4 py-3 text-center font-medium">{t.colEnabled}</th>
-                    <th className="px-4 py-3 text-right font-medium">{t.colActions}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {channels.map((channel) => {
-                    return (
-                      <tr
-                        key={channel.id}
+                    <td className={`px-4 py-3 font-medium ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                      <div>{channel.name}</div>
+                      <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {channel.groupId !== null ? `Group #${channel.groupId}` : '—'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <PlatformBadge platform={channel.platform} />
+                    </td>
+                    <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                      {channel.rateMultiplier}x
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {channel.groupId === null ? (
+                        <span
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400'}`}
+                        >
+                          —
+                        </span>
+                      ) : channel.groupExists ? (
+                        <span
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}
+                        >
+                          <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-600'}`}
+                        >
+                          <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </span>
+                      )}
+                    </td>
+                    <td className={`px-4 py-3 text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {channel.sortOrder}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleEnabled(channel)}
                         className={[
-                          'border-b transition-colors',
-                          isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50',
+                          'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+                          channel.enabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300',
                         ].join(' ')}
                       >
-                        <td className={`px-4 py-3 font-medium ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                          <div>{channel.name}</div>
-                          <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {channel.groupId !== null ? `Group #${channel.groupId}` : '—'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <PlatformBadge platform={channel.platform} />
-                        </td>
-                        <td className={`px-4 py-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          {channel.rateMultiplier}x
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {channel.groupId === null ? (
-                            <span
-                              className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400'}`}
-                            >
-                              —
-                            </span>
-                          ) : channel.groupExists ? (
-                            <span
-                              className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}
-                            >
-                              <svg
-                                className="h-3.5 w-3.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2.5}
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            </span>
-                          ) : (
-                            <span
-                              className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-600'}`}
-                            >
-                              <svg
-                                className="h-3.5 w-3.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2.5}
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </span>
-                          )}
-                        </td>
-                        <td className={`px-4 py-3 text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {channel.sortOrder}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleEnabled(channel)}
-                            className={[
-                              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                              channel.enabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300',
-                            ].join(' ')}
-                          >
-                            <span
-                              className={[
-                                'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                                channel.enabled ? 'translate-x-4.5' : 'translate-x-0.5',
-                              ].join(' ')}
-                            />
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="inline-flex gap-1">
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(channel)}
-                              className={[
-                                'rounded-md px-2 py-1 text-xs font-medium transition-colors',
-                                isDark
-                                  ? 'text-indigo-400 hover:bg-indigo-500/20'
-                                  : 'text-indigo-600 hover:bg-indigo-50',
-                              ].join(' ')}
-                            >
-                              {t.edit}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(channel)}
-                              className={[
-                                'rounded-md px-2 py-1 text-xs font-medium transition-colors',
-                                isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50',
-                              ].join(' ')}
-                            >
-                              {t.delete}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </>
-      )}
+                        <span
+                          className={[
+                            'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
+                            channel.enabled ? 'translate-x-4.5' : 'translate-x-0.5',
+                          ].join(' ')}
+                        />
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="inline-flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(channel)}
+                          className={[
+                            'rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                            isDark ? 'text-indigo-400 hover:bg-indigo-500/20' : 'text-indigo-600 hover:bg-indigo-50',
+                          ].join(' ')}
+                        >
+                          {t.edit}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(channel)}
+                          className={[
+                            'rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                            isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50',
+                          ].join(' ')}
+                        >
+                          {t.delete}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {/* ── Edit / Create Modal ── */}
       {editModalOpen && (
