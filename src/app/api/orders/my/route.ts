@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
   const rawPageSize = Number(searchParams.get('page_size') || '20');
   const pageSize = VALID_PAGE_SIZES.includes(rawPageSize) ? rawPageSize : 20;
 
-  // 单独处理认证，区分认证失败和其他错误
   let user;
   try {
     user = await getCurrentUserByToken(token);
@@ -42,6 +41,10 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           paidAt: true,
           completedAt: true,
+          orderType: true,
+          refundRequestedAt: true,
+          refundRequestReason: true,
+          refundAmount: true,
         },
       }),
       prisma.order.count({ where }),
@@ -66,6 +69,11 @@ export async function GET(request: NextRequest) {
           status: item.status,
           paymentType: item.paymentType,
           createdAt: item.createdAt,
+          orderType: item.orderType,
+          refundRequestedAt: item.refundRequestedAt,
+          refundRequestReason: item.refundRequestReason,
+          refundAmount: item.refundAmount ? Number(item.refundAmount) : null,
+          canRefundRequest: item.orderType === 'balance' && item.status === 'COMPLETED',
           paymentSuccess: derived.paymentSuccess,
           rechargeSuccess: derived.rechargeSuccess,
           rechargeStatus: derived.rechargeStatus,

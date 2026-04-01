@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import OrderTable from '@/components/admin/OrderTable';
 import OrderDetail from '@/components/admin/OrderDetail';
+import RefundDialog from '@/components/admin/RefundDialog';
 import PaginationBar from '@/components/PaginationBar';
 import PayPageLayout from '@/components/PayPageLayout';
 import { resolveLocale } from '@/lib/locale';
@@ -24,6 +25,9 @@ interface AdminOrder {
   expiresAt: string;
   srcHost: string | null;
   orderType?: string;
+  refundRequestedAt?: string | null;
+  refundRequestReason?: string | null;
+  refundAmount?: number | null;
 }
 
 interface AdminOrderDetail extends AdminOrder {
@@ -33,6 +37,7 @@ interface AdminOrderDetail extends AdminOrder {
   refundReason: string | null;
   refundAt: string | null;
   forceRefund: boolean;
+  refundRequestedBy?: number | null;
   failedAt: string | null;
   updatedAt: string;
   clientIp: string | null;
@@ -71,6 +76,8 @@ function AdminContent() {
           cancelConfirm: 'Cancel this order?',
           cancelFailed: 'Cancel failed',
           cancelRequestFailed: 'Cancel request failed',
+          refundFailed: 'Refund failed',
+          refundRequestFailed: 'Refund request failed',
           loadDetailFailed: 'Failed to load order details',
           title: 'Order Management',
           subtitle: 'View and manage all recharge orders',
@@ -87,10 +94,13 @@ function AdminContent() {
             PAID: 'Paid',
             RECHARGING: 'Recharging',
             COMPLETED: 'Completed',
+            REFUND_REQUESTED: 'Requested',
+            REFUNDING: 'Refunding',
             EXPIRED: 'Expired',
             CANCELLED: 'Cancelled',
             FAILED: 'Recharge failed',
-            REFUNDED: 'Refunded',
+            PARTIALLY_REFUNDED: 'Partially refunded',
+            REFUND_FAILED: 'Refund failed',
           },
         }
       : {
@@ -105,6 +115,8 @@ function AdminContent() {
           cancelConfirm: '确认取消该订单？',
           cancelFailed: '取消失败',
           cancelRequestFailed: '取消请求失败',
+          refundFailed: '退款失败',
+          refundRequestFailed: '退款请求失败',
           loadDetailFailed: '加载订单详情失败',
           title: '订单管理',
           subtitle: '查看和管理所有充值订单',
@@ -121,10 +133,13 @@ function AdminContent() {
             PAID: '已支付',
             RECHARGING: '充值中',
             COMPLETED: '已完成',
+            REFUND_REQUESTED: '申请中',
+            REFUNDING: '退款中',
             EXPIRED: '已超时',
             CANCELLED: '已取消',
             FAILED: '充值失败',
-            REFUNDED: '已退款',
+            PARTIALLY_REFUNDED: '已部分退款',
+            REFUND_FAILED: '退款失败',
           },
         };
 
@@ -137,8 +152,10 @@ function AdminContent() {
   const [orderTypeFilter, setOrderTypeFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   const [detailOrder, setDetailOrder] = useState<AdminOrderDetail | null>(null);
+  const [refundOrder, setRefundOrder] = useState<AdminOrder | null>(null);
+  const [refundWarning, setRefundWarning] = useState<string | undefined>(undefined);
+  const [refundRequireForce, setRefundRequireForce] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     if (!token) return;
@@ -186,9 +203,7 @@ function AdminContent() {
   const handleRetry = async (orderId: string) => {
     if (!confirm(text.retryConfirm)) return;
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}/retry?token=${token}`, {
-        method: 'POST',
-      });
+      const res = await fetch(`/api/admin/orders/${orderId}/retry?token=${token}`, { method: 'POST' });
       if (res.ok) {
         fetchOrders();
       } else {
@@ -203,9 +218,7 @@ function AdminContent() {
   const handleCancel = async (orderId: string) => {
     if (!confirm(text.cancelConfirm)) return;
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}/cancel?token=${token}`, {
-        method: 'POST',
-      });
+      const res = await fetch(`/api/admin/orders/${orderId}/cancel?token=${token}`, { method: 'POST' });
       if (res.ok) {
         fetchOrders();
       } else {
@@ -214,6 +227,45 @@ function AdminContent() {
       }
     } catch {
       setError(text.cancelRequestFailed);
+    }
+  };
+
+  const handleRefund = (orderId: string) => {
+    const order = orders.find((item) => item.id === orderId);
+    if (!order) return;
+    setRefundOrder(order);
+    setRefundWarning(undefined);
+    setRefundRequireForce(false);
+  };
+
+  const handleConfirmRefund = async (amount: number, reason: string, force: boolean) => {
+    if (!refundOrder) return;
+    try {
+      const res = await fetch(`/api/admin/refund?token=${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: refundOrder.id, amount, reason, force }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || text.refundFailed);
+        return;
+      }
+      if (data.requireForce) {
+        setRefundWarning(data.warning);
+        setRefundRequireForce(true);
+        return;
+      }
+      setRefundOrder(null);
+      setRefundWarning(undefined);
+      setRefundRequireForce(false);
+      await fetchOrders();
+      if (detailOrder?.id === refundOrder.id) {
+        const detailRes = await fetch(`/api/admin/orders/${refundOrder.id}?token=${token}`);
+        if (detailRes.ok) setDetailOrder(await detailRes.json());
+      }
+    } catch {
+      setError(text.refundRequestFailed);
     }
   };
 
@@ -229,16 +281,14 @@ function AdminContent() {
     }
   };
 
-  const statuses = ['', 'PENDING', 'PAID', 'RECHARGING', 'COMPLETED', 'EXPIRED', 'CANCELLED', 'FAILED', 'REFUNDED'];
+  const statuses = ['', 'PENDING', 'PAID', 'RECHARGING', 'COMPLETED', 'REFUND_REQUESTED', 'REFUNDING', 'PARTIALLY_REFUNDED', 'EXPIRED', 'CANCELLED', 'FAILED', 'REFUNDED', 'REFUND_FAILED'];
   const statusLabels: Record<string, string> = text.statuses;
   const orderTypes = ['', 'balance', 'subscription'];
   const orderTypeLabels: Record<string, string> = text.orderTypes;
 
   const btnBase = [
     'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-    isDark
-      ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
-      : 'border-slate-300 text-slate-700 hover:bg-slate-100',
+    isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100',
   ].join(' ');
 
   return (
@@ -249,26 +299,15 @@ function AdminContent() {
       title={text.title}
       subtitle={text.subtitle}
       locale={locale}
-      actions={
-        <>
-          <button type="button" onClick={fetchOrders} className={btnBase}>
-            {text.refresh}
-          </button>
-        </>
-      }
+      actions={<button type="button" onClick={fetchOrders} className={btnBase}>{text.refresh}</button>}
     >
       {error && (
-        <div
-          className={`mb-4 rounded-lg border p-3 text-sm ${isDark ? 'border-red-800 bg-red-950/50 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}
-        >
+        <div className={`mb-4 rounded-lg border p-3 text-sm ${isDark ? 'border-red-800 bg-red-950/50 text-red-400' : 'border-red-200 bg-red-50 text-red-600'}`}>
           {error}
-          <button onClick={() => setError('')} className="ml-2 opacity-60 hover:opacity-100">
-            ✕
-          </button>
+          <button onClick={() => setError('')} className="ml-2 opacity-60 hover:opacity-100">✕</button>
         </div>
       )}
 
-      {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-2">
         {statuses.map((s) => (
           <button
@@ -315,13 +354,7 @@ function AdminContent() {
         ))}
       </div>
 
-      {/* Table */}
-      <div
-        className={[
-          'rounded-xl border',
-          isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm',
-        ].join(' ')}
-      >
+      <div className={['rounded-xl border', isDark ? 'border-slate-700 bg-slate-800/70' : 'border-slate-200 bg-white shadow-sm'].join(' ')}>
         {loading ? (
           <div className={`py-12 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{text.loading}</div>
         ) : (
@@ -329,6 +362,7 @@ function AdminContent() {
             orders={orders}
             onRetry={handleRetry}
             onCancel={handleCancel}
+            onRefund={handleRefund}
             onViewDetail={handleViewDetail}
             dark={isDark}
             locale={locale}
@@ -351,9 +385,23 @@ function AdminContent() {
         isDark={isDark}
       />
 
-      {/* Order Detail */}
-      {detailOrder && (
-        <OrderDetail order={detailOrder} onClose={() => setDetailOrder(null)} dark={isDark} locale={locale} />
+      {detailOrder && <OrderDetail order={detailOrder} onClose={() => setDetailOrder(null)} dark={isDark} locale={locale} />}
+      {refundOrder && (
+        <RefundDialog
+          orderId={refundOrder.id}
+          amount={refundOrder.amount}
+          requestedAmount={refundOrder.refundAmount ?? refundOrder.amount}
+          warning={refundWarning}
+          requireForce={refundRequireForce}
+          onConfirm={handleConfirmRefund}
+          onCancel={() => {
+            setRefundOrder(null);
+            setRefundWarning(undefined);
+            setRefundRequireForce(false);
+          }}
+          dark={isDark}
+          locale={locale}
+        />
       )}
     </PayPageLayout>
   );
