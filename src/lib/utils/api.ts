@@ -5,7 +5,9 @@ import { resolveLocale } from '@/lib/locale';
 /** 统一处理 OrderError 和未知错误 */
 export function handleApiError(error: unknown, fallbackMessage: string, request?: NextRequest): NextResponse {
   if (error instanceof OrderError) {
-    return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
+    const body: Record<string, unknown> = { error: error.message, code: error.code };
+    if (error.data) body.data = error.data;
+    return NextResponse.json(body, { status: error.statusCode });
   }
   const locale = resolveLocale(request?.nextUrl.searchParams.get('lang'));
   const resolvedFallback = locale === 'en' ? translateFallbackMessage(fallbackMessage) : fallbackMessage;

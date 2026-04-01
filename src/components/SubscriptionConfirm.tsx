@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import type { Locale } from '@/lib/locale';
 import { pickLocaleText } from '@/lib/locale';
-import { getPaymentTypeLabel, getPaymentIconSrc } from '@/lib/pay-utils';
+import { getPaymentTypeLabel, getPaymentIconSrc, PAYMENT_TYPE_META } from '@/lib/pay-utils';
 import type { PlanInfo } from '@/components/SubscriptionPlanCard';
 import { PlanInfoDisplay } from '@/components/SubscriptionPlanCard';
 
@@ -76,6 +76,7 @@ export default function SubscriptionConfirm({
           {paymentTypes.map((type) => {
             const isSelected = selectedPayment === type;
             const iconSrc = getPaymentIconSrc(type);
+            const meta = PAYMENT_TYPE_META[type];
             return (
               <button
                 key={type}
@@ -84,14 +85,14 @@ export default function SubscriptionConfirm({
                 className={[
                   'flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all',
                   isSelected
-                    ? 'border-emerald-500 ring-1 ring-emerald-500/30'
+                    ? `${meta?.selectedBorder || 'border-emerald-500'} ring-1 ring-current/20`
                     : isDark
                       ? 'border-slate-700 hover:border-slate-600'
                       : 'border-slate-200 hover:border-slate-300',
                   isSelected
                     ? isDark
-                      ? 'bg-emerald-950/30'
-                      : 'bg-emerald-50/50'
+                      ? meta?.selectedBgDark || 'bg-emerald-950/30'
+                      : meta?.selectedBg || 'bg-emerald-50/50'
                     : isDark
                       ? 'bg-slate-800/60'
                       : 'bg-white',
@@ -101,10 +102,19 @@ export default function SubscriptionConfirm({
                 <span
                   className={[
                     'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2',
-                    isSelected ? 'border-emerald-500' : isDark ? 'border-slate-600' : 'border-slate-300',
+                    isSelected
+                      ? `${meta?.selectedBorder || 'border-emerald-500'}`
+                      : isDark
+                        ? 'border-slate-600'
+                        : 'border-slate-300',
                   ].join(' ')}
                 >
-                  {isSelected && <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />}
+                  {isSelected && (
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: meta?.color || '#10b981' }}
+                    />
+                  )}
                 </span>
 
                 {/* Icon */}

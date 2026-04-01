@@ -394,6 +394,36 @@ function PayContent() {
       const data = await res.json();
 
       if (!res.ok) {
+        // 取消频率限制：根据后端返回的结构化数据构造国际化提示
+        if (data.code === 'CANCEL_RATE_LIMITED' && data.data) {
+          const { windowSize, unit, maxCount, retryAfterMinutes } = data.data as {
+            windowSize: number;
+            unit: string;
+            maxCount: number;
+            retryAfterMinutes: number;
+          };
+          const unitLabel = pickLocaleText(
+            locale,
+            unit === 'minute' ? '分钟' : unit === 'day' ? '天' : '小时',
+            unit === 'minute' ? 'minute(s)' : unit === 'day' ? 'day(s)' : 'hour(s)',
+          );
+          let waitLabel: string;
+          if (retryAfterMinutes < 60) {
+            waitLabel = pickLocaleText(locale, `${retryAfterMinutes} 分钟`, `${retryAfterMinutes} minute(s)`);
+          } else {
+            const hours = Math.ceil(retryAfterMinutes / 60);
+            waitLabel = pickLocaleText(locale, `${hours} 小时`, `${hours} hour(s)`);
+          }
+          setError(
+            pickLocaleText(
+              locale,
+              `取消订单过于频繁，${windowSize} ${unitLabel}内最多可取消 ${maxCount} 次。预计 ${waitLabel}后可再次下单`,
+              `Too many cancellations (max ${maxCount} per ${windowSize} ${unitLabel}). You can place a new order in ${waitLabel}`,
+            ),
+          );
+          return;
+        }
+
         const codeMessages: Record<string, string> = {
           INVALID_TOKEN: pickLocaleText(locale, '认证已失效，请重新从平台进入充值页面', 'Authentication expired'),
           USER_INACTIVE: pickLocaleText(locale, '账户已被禁用，无法充值', 'Account is disabled'),

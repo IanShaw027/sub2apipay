@@ -189,19 +189,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       },
     });
     if (recentCancelCount >= maxCount) {
-      const unitLabel =
-        locale === 'en'
-          ? unit === 'minute'
-            ? 'minute(s)'
-            : unit === 'day'
-              ? 'day(s)'
-              : 'hour(s)'
-          : unit === 'minute'
-            ? '分钟'
-            : unit === 'day'
-              ? '天'
-              : '小时';
-
       let retryAfter: Date;
       if (windowMode === 'fixed') {
         const now = new Date();
@@ -235,25 +222,18 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       }
 
       const waitMs = retryAfter.getTime() - Date.now();
-      const waitMin = Math.ceil(waitMs / 60_000);
-      let waitLabel: string;
-      if (waitMin < 1) {
-        waitLabel = locale === 'en' ? 'less than 1 minute' : '不到 1 分钟';
-      } else if (waitMin < 60) {
-        waitLabel = locale === 'en' ? `${waitMin} minute(s)` : `${waitMin} 分钟`;
-      } else {
-        const waitHr = Math.ceil(waitMin / 60);
-        waitLabel = locale === 'en' ? `${waitHr} hour(s)` : `${waitHr} 小时`;
-      }
+      const retryAfterMinutes = Math.max(1, Math.ceil(waitMs / 60_000));
 
       throw new OrderError(
         'CANCEL_RATE_LIMITED',
-        message(
-          locale,
-          `取消订单过于频繁，${windowSize} ${unitLabel}内最多可取消 ${maxCount} 次。预计 ${waitLabel}后可再次下单`,
-          `Too many cancellations (max ${maxCount} per ${windowSize} ${unitLabel}). You can place a new order in ${waitLabel}`,
-        ),
+        'Cancel rate limited',
         429,
+        {
+          windowSize,
+          unit,
+          maxCount,
+          retryAfterMinutes,
+        },
       );
     }
   }
@@ -1291,11 +1271,13 @@ export async function processRefund(input: RefundInput): Promise<RefundResult> {
 export class OrderError extends Error {
   code: string;
   statusCode: number;
+  data?: Record<string, unknown>;
 
-  constructor(code: string, message: string, statusCode: number = 400) {
+  constructor(code: string, message: string, statusCode: number = 400, data?: Record<string, unknown>) {
     super(message);
     this.name = 'OrderError';
     this.code = code;
     this.statusCode = statusCode;
+    this.data = data;
   }
 }
