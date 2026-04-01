@@ -93,6 +93,7 @@ const ALLOWED_CONFIG_KEYS = new Set([
   'LOAD_BALANCE_STRATEGY',
   'ENABLED_PROVIDERS',
   'SUB2API_ADMIN_API_KEY',
+  'OVERRIDE_ENV_ENABLED',
 ]);
 
 export async function PUT(request: NextRequest) {

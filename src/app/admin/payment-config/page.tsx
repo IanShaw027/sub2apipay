@@ -296,18 +296,9 @@ function PaymentConfigContent() {
       if (!res.ok) return;
       const data = await res.json();
       const configs: { key: string; value: string }[] = data.configs ?? [];
-      const overrideKeys = [
-        'ENABLED_PAYMENT_TYPES',
-        'ENABLED_PROVIDERS',
-        'SUB2API_ADMIN_API_KEY',
-        'MAX_PENDING_ORDERS',
-        'RECHARGE_MIN_AMOUNT',
-        'RECHARGE_MAX_AMOUNT',
-        'DAILY_RECHARGE_LIMIT',
-        'ORDER_TIMEOUT_MINUTES',
-      ];
       let hasOverride = false;
       for (const c of configs) {
+        if (c.key === 'OVERRIDE_ENV_ENABLED') hasOverride = c.value === 'true';
         if (c.key === 'PRODUCT_NAME_PREFIX') setRcPrefix(c.value);
         if (c.key === 'PRODUCT_NAME_SUFFIX') setRcSuffix(c.value);
         if (c.key === 'BALANCE_PAYMENT_DISABLED') setRcBalanceEnabled(c.value !== 'true');
@@ -325,7 +316,6 @@ function PaymentConfigContent() {
         if (c.key === 'ORDER_TIMEOUT_MINUTES') setRcOrderTimeout(c.value);
         if (c.key === 'LOAD_BALANCE_STRATEGY') setRcLoadBalanceStrategy(c.value || 'round-robin');
         if (c.key === 'SUB2API_ADMIN_API_KEY') setRcSub2apiKey(/\*{4,}/.test(c.value) ? '' : c.value);
-        if (overrideKeys.includes(c.key)) hasOverride = true;
       }
       setRcOverrideEnv(hasOverride);
       setRcOverrideSaved(hasOverride);
@@ -551,6 +541,12 @@ function PaymentConfigContent() {
               value: rcCancelRateLimitWindowMode,
               group: 'payment',
               label: '频率限制窗口模式',
+            },
+            {
+              key: 'OVERRIDE_ENV_ENABLED',
+              value: rcOverrideEnv ? 'true' : 'false',
+              group: 'system',
+              label: '覆盖环境变量开关',
             },
             ...(rcOverrideEnv
               ? [
