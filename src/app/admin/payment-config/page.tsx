@@ -324,7 +324,7 @@ function PaymentConfigContent() {
         if (c.key === 'DAILY_RECHARGE_LIMIT') setRcDailyLimit(c.value);
         if (c.key === 'ORDER_TIMEOUT_MINUTES') setRcOrderTimeout(c.value);
         if (c.key === 'LOAD_BALANCE_STRATEGY') setRcLoadBalanceStrategy(c.value || 'round-robin');
-        if (c.key === 'SUB2API_ADMIN_API_KEY') setRcSub2apiKey(c.value);
+        if (c.key === 'SUB2API_ADMIN_API_KEY') setRcSub2apiKey(/\*{4,}/.test(c.value) ? '' : c.value);
         if (overrideKeys.includes(c.key)) hasOverride = true;
       }
       setRcOverrideEnv(hasOverride);
