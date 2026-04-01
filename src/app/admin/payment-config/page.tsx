@@ -296,7 +296,16 @@ function PaymentConfigContent() {
       if (!res.ok) return;
       const data = await res.json();
       const configs: { key: string; value: string }[] = data.configs ?? [];
-      const overrideKeys = ['ENABLED_PAYMENT_TYPES', 'ENABLED_PROVIDERS'];
+      const overrideKeys = [
+        'ENABLED_PAYMENT_TYPES',
+        'ENABLED_PROVIDERS',
+        'SUB2API_ADMIN_API_KEY',
+        'MAX_PENDING_ORDERS',
+        'RECHARGE_MIN_AMOUNT',
+        'RECHARGE_MAX_AMOUNT',
+        'DAILY_RECHARGE_LIMIT',
+        'ORDER_TIMEOUT_MINUTES',
+      ];
       let hasOverride = false;
       for (const c of configs) {
         if (c.key === 'PRODUCT_NAME_PREFIX') setRcPrefix(c.value);
@@ -543,20 +552,24 @@ function PaymentConfigContent() {
               group: 'payment',
               label: '频率限制窗口模式',
             },
-            { key: 'MAX_PENDING_ORDERS', value: rcMaxPendingOrders, group: 'payment', label: '最多可存在支付中订单' },
-            { key: 'LOAD_BALANCE_STRATEGY', value: rcLoadBalanceStrategy, group: 'payment', label: '负载均衡策略' },
-            {
-              key: 'SUB2API_ADMIN_API_KEY',
-              value: rcSub2apiKey,
-              group: 'connection',
-              label: 'Sub2API Admin API Key',
-            },
-            { key: 'RECHARGE_MIN_AMOUNT', value: rcMinAmount, group: 'payment', label: '最小充值金额' },
-            { key: 'RECHARGE_MAX_AMOUNT', value: rcMaxAmount, group: 'payment', label: '最大充值金额' },
-            { key: 'DAILY_RECHARGE_LIMIT', value: rcDailyLimit, group: 'payment', label: '每日充值限额' },
-            { key: 'ORDER_TIMEOUT_MINUTES', value: rcOrderTimeout, group: 'payment', label: '订单超时时间' },
             ...(rcOverrideEnv
               ? [
+                  {
+                    key: 'MAX_PENDING_ORDERS',
+                    value: rcMaxPendingOrders,
+                    group: 'payment',
+                    label: '最多可存在支付中订单',
+                  },
+                  {
+                    key: 'SUB2API_ADMIN_API_KEY',
+                    value: rcSub2apiKey,
+                    group: 'connection',
+                    label: 'Sub2API Admin API Key',
+                  },
+                  { key: 'RECHARGE_MIN_AMOUNT', value: rcMinAmount, group: 'payment', label: '最小充值金额' },
+                  { key: 'RECHARGE_MAX_AMOUNT', value: rcMaxAmount, group: 'payment', label: '最大充值金额' },
+                  { key: 'DAILY_RECHARGE_LIMIT', value: rcDailyLimit, group: 'payment', label: '每日充值限额' },
+                  { key: 'ORDER_TIMEOUT_MINUTES', value: rcOrderTimeout, group: 'payment', label: '订单超时时间' },
                   { key: 'ENABLED_PROVIDERS', value: rcEnabledProviders, group: 'payment', label: '启用的服务商' },
                   {
                     key: 'ENABLED_PAYMENT_TYPES',
@@ -687,36 +700,11 @@ function PaymentConfigContent() {
           </div>
         </div>
 
-        {/* Sub2API Admin API Key */}
-        <div className="mb-4">
-          <label className={labelCls}>{t.sub2apiAdminApiKey}</label>
-          <input
-            type="password"
-            value={rcSub2apiKey}
-            onChange={(e) => setRcSub2apiKey(e.target.value)}
-            className={[inputCls, 'max-w-md'].join(' ')}
-            placeholder={t.sub2apiAdminApiKeyHint}
-            autoComplete="off"
-          />
-          <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.sub2apiAdminApiKeyHint}</p>
-        </div>
-
         {/* Toggles row */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-4">
           <div className="flex items-center gap-2">
             <Toggle value={rcBalanceEnabled} onChange={() => setRcBalanceEnabled(!rcBalanceEnabled)} />
             <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t.enableBalanceRecharge}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t.maxPendingOrders}</label>
-            <input
-              type="number"
-              min="1"
-              max="99"
-              value={rcMaxPendingOrders}
-              onChange={(e) => setRcMaxPendingOrders(e.target.value)}
-              className={[inputCls, '!w-20'].join(' ')}
-            />
           </div>
         </div>
 
@@ -790,50 +778,6 @@ function PaymentConfigContent() {
           )}
         </div>
 
-        {/* Amount / timeout fields */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <div>
-            <label className={labelCls}>{t.minRechargeAmount}</label>
-            <input
-              type="number"
-              min="0"
-              value={rcMinAmount}
-              onChange={(e) => setRcMinAmount(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>{t.maxRechargeAmount}</label>
-            <input
-              type="number"
-              min="0"
-              value={rcMaxAmount}
-              onChange={(e) => setRcMaxAmount(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>{t.dailyRechargeLimit}</label>
-            <input
-              type="number"
-              min="0"
-              value={rcDailyLimit}
-              onChange={(e) => setRcDailyLimit(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>{t.orderTimeoutMinutes}</label>
-            <input
-              type="number"
-              min="1"
-              value={rcOrderTimeout}
-              onChange={(e) => setRcOrderTimeout(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-        </div>
-
         {/* ── 覆盖环境变量配置 ── */}
         <div className={subCardCls}>
           <div className="flex items-center gap-3 mb-2">
@@ -849,6 +793,37 @@ function PaymentConfigContent() {
               <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.loadingEnvDefaults}</div>
             ) : (
               <>
+                {/* Sub2API Admin API Key */}
+                <div className="mb-3">
+                  <label className={labelCls}>{t.sub2apiAdminApiKey}</label>
+                  <input
+                    type="password"
+                    value={rcSub2apiKey}
+                    onChange={(e) => setRcSub2apiKey(e.target.value)}
+                    className={[inputCls, 'max-w-md'].join(' ')}
+                    placeholder={t.sub2apiAdminApiKeyHint}
+                    autoComplete="off"
+                  />
+                  <p className={`mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {t.sub2apiAdminApiKeyHint}
+                  </p>
+                </div>
+
+                {/* Max pending orders */}
+                <div className="flex items-center gap-2 mb-4">
+                  <label className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    {t.maxPendingOrders}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={rcMaxPendingOrders}
+                    onChange={(e) => setRcMaxPendingOrders(e.target.value)}
+                    className={[inputCls, '!w-20'].join(' ')}
+                  />
+                </div>
+
                 {/* Provider type badges */}
                 <div className="mb-3">
                   <label className={labelCls}>{t.enabledProviders}</label>
@@ -876,6 +851,50 @@ function PaymentConfigContent() {
                         </button>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* Amount / timeout fields */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  <div>
+                    <label className={labelCls}>{t.minRechargeAmount}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={rcMinAmount}
+                      onChange={(e) => setRcMinAmount(e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t.maxRechargeAmount}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={rcMaxAmount}
+                      onChange={(e) => setRcMaxAmount(e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t.dailyRechargeLimit}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={rcDailyLimit}
+                      onChange={(e) => setRcDailyLimit(e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t.orderTimeoutMinutes}</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={rcOrderTimeout}
+                      onChange={(e) => setRcOrderTimeout(e.target.value)}
+                      className={inputCls}
+                    />
                   </div>
                 </div>
 
@@ -930,67 +949,67 @@ function PaymentConfigContent() {
                               {PROVIDER_LABELS[pk]?.[locale] || pk}
                             </h4>
                             <div className="space-y-1.5">
-                                {providerInstances.map((inst) => {
-                                  const instTypes = inst.supportedTypes
-                                    ? inst.supportedTypes.split(',').filter(Boolean)
-                                    : [];
-                                  return (
-                                    <div
-                                      key={inst.id}
-                                      className={[
-                                        'flex items-center justify-between rounded-lg border px-3 py-2',
-                                        isDark ? 'border-slate-500/50 bg-slate-800/60' : 'border-slate-200 bg-white',
-                                      ].join(' ')}
-                                    >
-                                      <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-                                        <Toggle value={inst.enabled} onChange={() => toggleInstanceEnabled(inst)} />
-                                        <span
-                                          className={`text-sm font-medium ${inst.enabled ? (isDark ? 'text-slate-100' : 'text-slate-900') : isDark ? 'text-slate-500' : 'text-slate-400'}`}
-                                        >
-                                          {inst.name}
-                                        </span>
-                                        {instTypes.length > 0 ? (
-                                          instTypes.map((type) => (
-                                            <span
-                                              key={type}
-                                              className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}
-                                            >
-                                              {PAYMENT_TYPE_LABELS[type]?.[locale] || type}
-                                            </span>
-                                          ))
-                                        ) : (
+                              {providerInstances.map((inst) => {
+                                const instTypes = inst.supportedTypes
+                                  ? inst.supportedTypes.split(',').filter(Boolean)
+                                  : [];
+                                return (
+                                  <div
+                                    key={inst.id}
+                                    className={[
+                                      'flex items-center justify-between rounded-lg border px-3 py-2',
+                                      isDark ? 'border-slate-500/50 bg-slate-800/60' : 'border-slate-200 bg-white',
+                                    ].join(' ')}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+                                      <Toggle value={inst.enabled} onChange={() => toggleInstanceEnabled(inst)} />
+                                      <span
+                                        className={`text-sm font-medium ${inst.enabled ? (isDark ? 'text-slate-100' : 'text-slate-900') : isDark ? 'text-slate-500' : 'text-slate-400'}`}
+                                      >
+                                        {inst.name}
+                                      </span>
+                                      {instTypes.length > 0 ? (
+                                        instTypes.map((type) => (
                                           <span
-                                            className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-100 text-slate-500'}`}
+                                            key={type}
+                                            className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}
                                           >
-                                            {t.allChannels}
+                                            {PAYMENT_TYPE_LABELS[type]?.[locale] || type}
                                           </span>
-                                        )}
-                                        {inst.todayAmount !== undefined && inst.todayAmount > 0 && (
-                                          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {t.todayAmount}: ¥{inst.todayAmount}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                          type="button"
-                                          onClick={() => openEditInstance(inst)}
-                                          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${isDark ? 'text-indigo-400 hover:bg-indigo-500/15' : 'text-indigo-600 hover:bg-indigo-50'}`}
+                                        ))
+                                      ) : (
+                                        <span
+                                          className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-100 text-slate-500'}`}
                                         >
-                                          {locale === 'en' ? 'Edit' : '编辑'}
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDeleteInstance(inst.id)}
-                                          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${isDark ? 'text-red-400 hover:bg-red-500/15' : 'text-red-600 hover:bg-red-50'}`}
-                                        >
-                                          {locale === 'en' ? 'Delete' : '删除'}
-                                        </button>
-                                      </div>
+                                          {t.allChannels}
+                                        </span>
+                                      )}
+                                      {inst.todayAmount !== undefined && inst.todayAmount > 0 && (
+                                        <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                          {t.todayAmount}: ¥{inst.todayAmount}
+                                        </span>
+                                      )}
                                     </div>
-                                  );
-                                })}
-                              </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditInstance(inst)}
+                                        className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${isDark ? 'text-indigo-400 hover:bg-indigo-500/15' : 'text-indigo-600 hover:bg-indigo-50'}`}
+                                      >
+                                        {locale === 'en' ? 'Edit' : '编辑'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteInstance(inst.id)}
+                                        className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${isDark ? 'text-red-400 hover:bg-red-500/15' : 'text-red-600 hover:bg-red-50'}`}
+                                      >
+                                        {locale === 'en' ? 'Delete' : '删除'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         );
                       })}
