@@ -224,17 +224,12 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       const waitMs = retryAfter.getTime() - Date.now();
       const retryAfterMinutes = Math.max(1, Math.ceil(waitMs / 60_000));
 
-      throw new OrderError(
-        'CANCEL_RATE_LIMITED',
-        'Cancel rate limited',
-        429,
-        {
-          windowSize,
-          unit,
-          maxCount,
-          retryAfterMinutes,
-        },
-      );
+      throw new OrderError('CANCEL_RATE_LIMITED', 'Cancel rate limited', 429, {
+        windowSize,
+        unit,
+        maxCount,
+        retryAfterMinutes,
+      });
     }
   }
 

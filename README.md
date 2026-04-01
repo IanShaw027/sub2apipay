@@ -339,14 +339,14 @@ Sub2API **v0.1.88** 及以上版本会自动拼接以下参数，无需手动添
 
 管理后台通过 URL 参数 `token` 鉴权（值为环境变量 `ADMIN_TOKEN`）。在 Sub2API 中集成时只需配置路径，**无需附加任何查询参数**——Sub2API 会自动拼接 `token` 等参数：
 
-| 页面     | URL                                           | 说明                                           |
-| -------- | --------------------------------------------- | ---------------------------------------------- |
-| 管理总览 | `https://pay.example.com/admin`               | 聚合入口，卡片式导航到各管理模块               |
-| 订单管理 | `https://pay.example.com/admin/orders`        | 按状态筛选、分页浏览、订单详情、重试/取消/退款 |
-| 数据概览 | `https://pay.example.com/admin/dashboard`     | 收入统计、订单趋势、支付方式分布               |
+| 页面     | URL                                            | 说明                                           |
+| -------- | ---------------------------------------------- | ---------------------------------------------- |
+| 管理总览 | `https://pay.example.com/admin`                | 聚合入口，卡片式导航到各管理模块               |
+| 订单管理 | `https://pay.example.com/admin/orders`         | 按状态筛选、分页浏览、订单详情、重试/取消/退款 |
+| 数据概览 | `https://pay.example.com/admin/dashboard`      | 收入统计、订单趋势、支付方式分布               |
 | 支付配置 | `https://pay.example.com/admin/payment-config` | 服务商管理、实例配置、限额、业务参数在线调整   |
-| 渠道管理 | `https://pay.example.com/admin/channels`      | 配置 API 渠道与倍率，支持从 Sub2API 同步       |
-| 订阅管理 | `https://pay.example.com/admin/subscriptions` | 管理订阅套餐与用户订阅                         |
+| 渠道管理 | `https://pay.example.com/admin/channels`       | 配置 API 渠道与倍率，支持从 Sub2API 同步       |
+| 订阅管理 | `https://pay.example.com/admin/subscriptions`  | 管理订阅套餐与用户订阅                         |
 
 > **提示**：若独立访问（不通过 Sub2API 跳转），需手动在 URL 后添加 `?token=YOUR_ADMIN_TOKEN`。管理后台所有页面间共享同一个 token，进入任一页面后可通过侧边导航切换。
 

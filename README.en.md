@@ -339,14 +339,14 @@ Sub2API **v0.1.88** and above will automatically append the following parameters
 
 The admin panel is authenticated via the `token` URL parameter (set to the `ADMIN_TOKEN` environment variable). When integrating with Sub2API, just configure the paths — **no query parameters needed** — Sub2API will automatically append `token` and other parameters:
 
-| Page          | URL                                           | Description                                                   |
-| ------------- | --------------------------------------------- | ------------------------------------------------------------- |
-| Overview      | `https://pay.example.com/admin`               | Aggregated entry with card-style navigation                   |
-| Orders        | `https://pay.example.com/admin/orders`        | Filter by status, paginate, view details, retry/cancel/refund |
-| Dashboard     | `https://pay.example.com/admin/dashboard`      | Revenue stats, order trends, payment method breakdown         |
+| Page           | URL                                            | Description                                                   |
+| -------------- | ---------------------------------------------- | ------------------------------------------------------------- |
+| Overview       | `https://pay.example.com/admin`                | Aggregated entry with card-style navigation                   |
+| Orders         | `https://pay.example.com/admin/orders`         | Filter by status, paginate, view details, retry/cancel/refund |
+| Dashboard      | `https://pay.example.com/admin/dashboard`      | Revenue stats, order trends, payment method breakdown         |
 | Payment Config | `https://pay.example.com/admin/payment-config` | Provider management, instance config, limits, online settings |
-| Channels      | `https://pay.example.com/admin/channels`       | Configure API channels & rates, sync from Sub2API             |
-| Subscriptions | `https://pay.example.com/admin/subscriptions` | Manage subscription plans & user subscriptions                |
+| Channels       | `https://pay.example.com/admin/channels`       | Configure API channels & rates, sync from Sub2API             |
+| Subscriptions  | `https://pay.example.com/admin/subscriptions`  | Manage subscription plans & user subscriptions                |
 
 > **Tip**: When accessing directly (not via Sub2API), you need to manually append `?token=YOUR_ADMIN_TOKEN` to the URL. All admin pages share the same token — once you enter any page, you can navigate between modules via the sidebar.
 

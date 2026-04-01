@@ -110,10 +110,7 @@ export default function SubscriptionConfirm({
                   ].join(' ')}
                 >
                   {isSelected && (
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: meta?.color || '#10b981' }}
-                    />
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta?.color || '#10b981' }} />
                   )}
                 </span>
 

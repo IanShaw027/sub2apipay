@@ -737,7 +737,9 @@ function PaymentConfigContent() {
                 value={rcCancelRateLimitEnabled}
                 onChange={() => setRcCancelRateLimitEnabled(!rcCancelRateLimitEnabled)}
               />
-              <span className={`text-sm whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{t.cancelRateLimit}</span>
+              <span className={`text-sm whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                {t.cancelRateLimit}
+              </span>
             </div>
             {rcCancelRateLimitEnabled && (
               <>
@@ -1079,7 +1081,10 @@ function PaymentConfigContent() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>{t.instanceProvider}<span className="text-red-500 ml-0.5">*</span></label>
+                  <label className={labelCls}>
+                    {t.instanceProvider}
+                    <span className="text-red-500 ml-0.5">*</span>
+                  </label>
                   <select
                     value={instanceForm.providerKey}
                     onChange={(e) =>
@@ -1102,7 +1107,10 @@ function PaymentConfigContent() {
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>{t.instanceName}<span className="text-red-500 ml-0.5">*</span></label>
+                  <label className={labelCls}>
+                    {t.instanceName}
+                    <span className="text-red-500 ml-0.5">*</span>
+                  </label>
                   <input
                     type="text"
                     value={instanceForm.name}
@@ -1203,7 +1211,10 @@ function PaymentConfigContent() {
               )}
 
               <div>
-                <label className={[labelCls, 'mb-2'].join(' ')}>{t.instanceConfig}<span className="text-red-500 ml-0.5">*</span></label>
+                <label className={[labelCls, 'mb-2'].join(' ')}>
+                  {t.instanceConfig}
+                  <span className="text-red-500 ml-0.5">*</span>
+                </label>
                 <div className="space-y-2.5">
                   {(PROVIDER_CONFIG_FIELDS[instanceForm.providerKey] ?? []).map((field) => (
                     <div key={field.key}>
