@@ -1,0 +1,9 @@
+services:
+  app:
+    image: sub2apipay_app:latest
+    environment:
+      - DATABASE_URL=postgresql://postgres:xiao1211SHUANG@host.docker.internal:5432/sub2apipay_local
+    depends_on: []
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
